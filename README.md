@@ -70,7 +70,9 @@
    其中 $s \in \{-1, +1\}$ 由实际语义正负偏好标签决定，$m > 0$ 为期望的最小安全排序间隔。
 
 **最终联合目标函数：**
-$$\mathcal{L} = \mathcal{L}_{\mathrm{pref}} + \lambda_{\mathrm{inv}}(t)\mathcal{L}_{\mathrm{inv}} + \lambda_{\mathrm{margin}}(t)\mathcal{L}_{\mathrm{margin}} + \lambda_{\mathrm{sem}}(t)\mathcal{L}_{\mathrm{sem}}$$
+$$
+\mathcal{L} = \mathcal{L}_{\mathrm{pref}} + \lambda_{\mathrm{inv}}(t)\mathcal{L}_{\mathrm{inv}} + \lambda_{\mathrm{margin}}(t)\mathcal{L}_{\mathrm{margin}} + \lambda_{\mathrm{sem}}(t)\mathcal{L}_{\mathrm{sem}}
+$$
 其中动态权重 $\lambda(t)$ 随训练步数 $t$ 按渐进式调度器（Progressive Scheduler）分阶段平滑拉升。
 
 ---
