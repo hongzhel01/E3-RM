@@ -202,14 +202,3 @@ python -m pip install ruff build
 ruff check e3_rm tests
 python -m build
 ```
-
-完整测试可能需要联网、GPU 或可选依赖。此前迁移的 79 项针对性检查通过；具体范围及未通过项见[整理记录](docs/整理记录.md)，不把历史结果当作本轮重新运行的结果。
-
-## 项目文档与授权
-
-- [项目结构](docs/项目结构.md)：目录职责、CLI 到训练器的调用链、关键代码入口。
-- [设计与实验](docs/设计与实验.md)：尚待实现的 E3 目标、损失、数据与评估计划。
-- [开发说明](docs/开发与迁移.md)：配置、注释规范、兼容性与检查方法。
-- [整理记录](docs/整理记录.md)：精简结论和验证记录。
-
-项目使用独立的 E3-RM 名称，继承代码来自 [Hugging Face TRL](https://github.com/huggingface/trl)，原始版权声明继续保留。许可证正文已集中到 [e3_rm/licenses/Apache-2.0.txt](e3_rm/licenses/Apache-2.0.txt)，并随安装包分发。外部模型/数据集 ID 和必要来源链接保留真实名称。
