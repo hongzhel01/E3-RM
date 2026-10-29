@@ -490,4 +490,3 @@ ruff check e3_rm tests
 python -m build
 ```
 
-README 与实现的逐项核查、已修复问题和验证边界见 [实现核查记录](docs/实现核查.md)。
