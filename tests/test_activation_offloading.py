@@ -1,4 +1,6 @@
 # Copyright 2020-2026 The HuggingFace Team. All rights reserved.
+# Modified for E3-RM: namespace migration and maintenance comments (2026-10-28).
+# 验证迁移后公开行为；外部 tiny 模型与数据集 ID 保持真实来源。
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,17 +25,17 @@ from transformers import AutoModelForCausalLM
 from transformers.testing_utils import torch_device
 from transformers.utils import is_peft_available
 
-from trl.models import activation_offloading as activation_offloading_module
-from trl.models.activation_offloading import NoOpManager, OffloadActivations
+from e3_rm.models import activation_offloading as activation_offloading_module
+from e3_rm.models.activation_offloading import NoOpManager, OffloadActivations
 
-from .testing_utils import TrlTestCase, require_peft, require_torch_accelerator
+from .testing_utils import E3RMTestCase, require_peft, require_torch_accelerator
 
 
 if is_peft_available():
     from peft import LoraConfig, get_peft_model
 
 
-class TestActivationOffloading(TrlTestCase):
+class TestActivationOffloading(E3RMTestCase):
     @pytest.fixture(autouse=True)
     def _init_accelerate_state(self):
         PartialState()

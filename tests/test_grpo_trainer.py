@@ -1,4 +1,6 @@
 # Copyright 2020-2026 The HuggingFace Team. All rights reserved.
+# Modified for E3-RM: namespace migration and maintenance comments (2026-10-28).
+# 验证迁移后公开行为；外部 tiny 模型与数据集 ID 保持真实来源。
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -34,11 +36,11 @@ from transformers import (
 from transformers.testing_utils import torch_device
 from transformers.utils import is_peft_available
 
-from trl import GRPOConfig, GRPOTrainer
-from trl.chat_template_utils import _SUPPORTS_RESPONSE_TEMPLATE
+from e3_rm import GRPOConfig, GRPOTrainer
+from e3_rm.chat_template_utils import _SUPPORTS_RESPONSE_TEMPLATE
 
 from .testing_utils import (
-    TrlTestCase,
+    E3RMTestCase,
     is_ampere_or_newer,
     is_bf16_supported,
     require_bitsandbytes,
@@ -84,7 +86,7 @@ async def async_multiply_tool(a: int, b: int) -> int:
     return a * b
 
 
-class TestGetHighEntropyMask(TrlTestCase):
+class TestGetHighEntropyMask(E3RMTestCase):
     def get_high_entropy_mask(self, entropies, mask, threshold):
         dataset = load_dataset("trl-internal-testing/zen", "standard_prompt_only", split="train")
         trainer = GRPOTrainer(
@@ -148,7 +150,7 @@ class TestGetHighEntropyMask(TrlTestCase):
         torch.testing.assert_close(entropy_mask, expected_mask)
 
 
-class TestGRPORolloutDispatch(TrlTestCase):
+class TestGRPORolloutDispatch(E3RMTestCase):
     def _make_rollout_func(self, **output):
         # A plain callable, as a user passes, recording the calls it gets
         def rollout_func(prompts, trainer):
@@ -168,7 +170,7 @@ class TestGRPORolloutDispatch(TrlTestCase):
             rollout_func=rollout_func,
         )
 
-    @patch.dict(os.environ, {"TRL_EXPERIMENTAL_SILENCE": "1"})
+    @patch.dict(os.environ, {"E3_RM_EXPERIMENTAL_SILENCE": "1"})
     def test_generate_prefers_rollout_func(self):
         rollout_func = self._make_rollout_func(
             prompt_ids=[[1]], completion_ids=[[2]], logprobs=[[-0.1]], env_mask=[[1]]
@@ -182,7 +184,7 @@ class TestGRPORolloutDispatch(TrlTestCase):
         assert result[2] == [[1]]  # tool_mask (from env_mask)
         assert rollout_func.calls == [(["prompt"], trainer)]
 
-    @patch.dict(os.environ, {"TRL_EXPERIMENTAL_SILENCE": "1"})
+    @patch.dict(os.environ, {"E3_RM_EXPERIMENTAL_SILENCE": "1"})
     def test_generate_rollout_func_syncs_vllm_weights_when_needed(self):
         rollout_func = self._make_rollout_func(prompt_ids=[[1]], completion_ids=[[2]], logprobs=[[0.0]])
         trainer = self._make_trainer(rollout_func)
@@ -197,7 +199,7 @@ class TestGRPORolloutDispatch(TrlTestCase):
         assert trainer._last_loaded_step == trainer.state.global_step
         assert rollout_func.calls == [(["prompt"], trainer)]
 
-    @patch.dict(os.environ, {"TRL_EXPERIMENTAL_SILENCE": "1"})
+    @patch.dict(os.environ, {"E3_RM_EXPERIMENTAL_SILENCE": "1"})
     def test_generate_rollout_func_raises_when_required_keys_are_missing(self):
         trainer = self._make_trainer(self._make_rollout_func(prompt_ids=[[1]], completion_ids=[[2]]))
 
@@ -241,7 +243,7 @@ class TestTransformersContinuousBatchingContract:
         )
 
 
-class TestGRPOTrainer(TrlTestCase):
+class TestGRPOTrainer(E3RMTestCase):
     def test_init_minimal(self):
         # Test that GRPOTrainer can be instantiated with only model, reward_model and train_dataset
         dataset = load_dataset("trl-internal-testing/zen", "standard_prompt_only", split="train")
@@ -2778,7 +2780,7 @@ class TestGRPOTrainer(TrlTestCase):
             train_dataset=dataset,
         )
 
-        with caplog.at_level("WARNING", logger="trl.trainer.grpo_trainer"):
+        with caplog.at_level("WARNING", logger="e3_rm.trainer.grpo_trainer"):
             trainer.train()
 
         expected_warning = "All reward functions returned None for the following kwargs:"
@@ -2802,7 +2804,7 @@ class TestGRPOTrainer(TrlTestCase):
             max_completion_length=8,  # reduce the completion length to reduce memory usage
             report_to="none",
         )
-        with caplog.at_level("WARNING", logger="trl.trainer.grpo_trainer"):
+        with caplog.at_level("WARNING", logger="e3_rm.trainer.grpo_trainer"):
             GRPOTrainer(
                 model="trl-internal-testing/tiny-Qwen2ForCausalLM-2.5",
                 reward_funcs=dummy_reward_func,
@@ -3391,7 +3393,7 @@ class TestGRPOTrainer(TrlTestCase):
         # jmespath, so a spurious guard breaks them before training starts.
         dataset = load_dataset("trl-internal-testing/zen", "conversational_prompt_only", split="train")
         training_args = GRPOConfig(output_dir=self.tmp_dir, report_to="none")
-        with patch("trl.trainer.grpo_trainer.is_jmespath_available", return_value=False):
+        with patch("e3_rm.trainer.grpo_trainer.is_jmespath_available", return_value=False):
             GRPOTrainer(  # must construct without raising
                 model="trl-internal-testing/tiny-Qwen3MoeForCausalLM",
                 reward_funcs="trl-internal-testing/tiny-Qwen2ForSequenceClassification-2.5",
@@ -3406,7 +3408,7 @@ class TestGRPOTrainer(TrlTestCase):
         strict=True,
     )
     @require_response_parsing
-    @patch.dict(os.environ, {"TRL_EXPERIMENTAL_SILENCE": "1"})
+    @patch.dict(os.environ, {"E3_RM_EXPERIMENTAL_SILENCE": "1"})
     def test_train_with_multiple_environments(self):
         # When `environment_factory` is a dict, each rollout selects its environment via its `environment` field, and
         # only that environment's tools are exposed. Here we build a mixed batch with both environments and check that
@@ -3537,7 +3539,7 @@ class TestGRPOTrainer(TrlTestCase):
         strict=True,
     )
     @require_response_parsing
-    @patch.dict(os.environ, {"TRL_EXPERIMENTAL_SILENCE": "1"})
+    @patch.dict(os.environ, {"E3_RM_EXPERIMENTAL_SILENCE": "1"})
     def test_train_with_multiple_environments_same_tool_name(self):
         # Two environments expose a `submit` tool with different argument types. Each tool call must be parsed with the
         # schema of its own environment's `submit`: the zip code stays the string "42", the count is the integer 42.
@@ -3635,7 +3637,7 @@ class TestGRPOTrainer(TrlTestCase):
         strict=True,
     )
     @require_response_parsing
-    @patch.dict(os.environ, {"TRL_EXPERIMENTAL_SILENCE": "1"})
+    @patch.dict(os.environ, {"E3_RM_EXPERIMENTAL_SILENCE": "1"})
     def test_train_with_unknown_environment_raises(self):
         # With a dict `environment_factory`, an example whose `environment` field doesn't match any configured
         # environment should fail with a clear error rather than a bare KeyError mid-rollout.
@@ -3681,7 +3683,7 @@ class TestGRPOTrainer(TrlTestCase):
         strict=True,
     )
     @require_response_parsing
-    @patch.dict(os.environ, {"TRL_EXPERIMENTAL_SILENCE": "1"})
+    @patch.dict(os.environ, {"E3_RM_EXPERIMENTAL_SILENCE": "1"})
     def test_train_with_environment_factory(self):
         # In this test, we define a simple tool that increments an internal counter. Regardless of the input prompt,
         # the model will generate 3 completions, 2 of which will be valid tool calls. Among the 2 tool calls, one will
@@ -3774,7 +3776,7 @@ class TestGRPOTrainer(TrlTestCase):
         strict=True,
     )
     @require_response_parsing
-    @patch.dict(os.environ, {"TRL_EXPERIMENTAL_SILENCE": "1"})
+    @patch.dict(os.environ, {"E3_RM_EXPERIMENTAL_SILENCE": "1"})
     def test_tool_discovery_does_not_evaluate_environment_properties(self):
         # Tool discovery must list the environment's methods on its class. `inspect.getmembers` calls `getattr` on
         # every name before applying the predicate, so listing the instance evaluates its properties, and a property
@@ -3845,7 +3847,7 @@ class TestGRPOTrainer(TrlTestCase):
         strict=True,
     )
     @require_response_parsing
-    @patch.dict(os.environ, {"TRL_EXPERIMENTAL_SILENCE": "1"})
+    @patch.dict(os.environ, {"E3_RM_EXPERIMENTAL_SILENCE": "1"})
     def test_train_with_environment_owned_reward(self):
         # Same setup as `test_train_with_environment_factory`, but the environment owns the reward via a `get_reward`
         # method and no `reward_funcs` is passed. The reward equals the final counter, so the 3 generations
@@ -3944,7 +3946,7 @@ class TestGRPOTrainer(TrlTestCase):
         strict=True,
     )
     @require_response_parsing
-    @patch.dict(os.environ, {"TRL_EXPERIMENTAL_SILENCE": "1"})
+    @patch.dict(os.environ, {"E3_RM_EXPERIMENTAL_SILENCE": "1"})
     def test_environment_owned_reward_coexists_with_reward_funcs(self):
         # When both `reward_funcs` and an environment-owned `get_reward` are present, `get_reward` is appended as an
         # extra reward source (weight 1) after the trainer-owned reward functions.
@@ -4001,7 +4003,7 @@ class TestGRPOTrainer(TrlTestCase):
         strict=True,
     )
     @require_response_parsing
-    @patch.dict(os.environ, {"TRL_EXPERIMENTAL_SILENCE": "1"})
+    @patch.dict(os.environ, {"E3_RM_EXPERIMENTAL_SILENCE": "1"})
     def test_environment_owned_reward_mixed_environments(self):
         # With a dict `environment_factory`, only some environments may own their reward via `get_reward`. Each such
         # env *class* contributes one reward column (named after its class); a rollout is scored only when its
@@ -4102,7 +4104,7 @@ class TestGRPOTrainer(TrlTestCase):
         strict=True,
     )
     @require_response_parsing
-    @patch.dict(os.environ, {"TRL_EXPERIMENTAL_SILENCE": "1"})
+    @patch.dict(os.environ, {"E3_RM_EXPERIMENTAL_SILENCE": "1"})
     def test_environment_owned_data_requires_max_steps(self):
         # When the environment owns the data and no external `train_dataset` is provided, `max_steps` must set the
         # training length.
@@ -4125,7 +4127,7 @@ class TestGRPOTrainer(TrlTestCase):
         strict=True,
     )
     @require_response_parsing
-    @patch.dict(os.environ, {"TRL_EXPERIMENTAL_SILENCE": "1"})
+    @patch.dict(os.environ, {"E3_RM_EXPERIMENTAL_SILENCE": "1"})
     def test_multiple_environments_without_dataset_raises(self):
         # Multiple environments (a `dict` factory) need a `train_dataset` with an `environment` column to route each
         # example. Without one, there is no per-rollout selector, so construction fails fast with a clear message.
@@ -4150,7 +4152,7 @@ class TestGRPOTrainer(TrlTestCase):
         strict=True,
     )
     @require_response_parsing
-    @patch.dict(os.environ, {"TRL_EXPERIMENTAL_SILENCE": "1"})
+    @patch.dict(os.environ, {"E3_RM_EXPERIMENTAL_SILENCE": "1"})
     def test_train_with_environment_owned_data(self):
         # The environment owns the data — no external `train_dataset` is needed. `reset()` returns the prompt, and
         # `max_steps` drives the training loop. A placeholder dataset is built internally.
@@ -4384,7 +4386,7 @@ class TestGRPOTrainer(TrlTestCase):
 
 
 @require_vision
-class TestGRPOTrainerVLM(TrlTestCase):
+class TestGRPOTrainerVLM(E3RMTestCase):
     @pytest.mark.parametrize(
         "model_id",
         [

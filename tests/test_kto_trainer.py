@@ -1,4 +1,6 @@
 # Copyright 2020-2026 The HuggingFace Team. All rights reserved.
+# Modified for E3-RM: namespace migration and maintenance comments (2026-10-28).
+# 验证迁移后公开行为；外部 tiny 模型与数据集 ID 保持真实来源。
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,14 +23,14 @@ from packaging.version import Version
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from transformers.utils import is_peft_available
 
-from trl import KTOConfig, KTOTrainer
-from trl.trainer.kto_trainer import (
+from e3_rm import KTOConfig, KTOTrainer
+from e3_rm.trainer.kto_trainer import (
     DataCollatorForUnpairedPreference,
     DataCollatorForVisionUnpairedPreference,
 )
 
 from .testing_utils import (
-    TrlTestCase,
+    E3RMTestCase,
     is_bf16_supported,
     require_bitsandbytes,
     require_peft,
@@ -44,7 +46,7 @@ if is_peft_available():
 
 
 @require_vision
-class TestDataCollatorForVisionUnpairedPreference(TrlTestCase):
+class TestDataCollatorForVisionUnpairedPreference(E3RMTestCase):
     @pytest.mark.skipif(
         Version(transformers.__version__) < Version("5.3.0"),
         reason="mm_token_type_ids are returned by default since transformers-5.3.0 (see transformers#43972)",
@@ -153,7 +155,7 @@ class TestDataCollatorForVisionUnpairedPreference(TrlTestCase):
         assert not torch.equal(output["input_ids"][1], output["KL_input_ids"][1])
 
 
-class TestDataCollatorForUnpairedPreference(TrlTestCase):
+class TestDataCollatorForUnpairedPreference(E3RMTestCase):
     def test_padding_and_masks(self):
         collator = DataCollatorForUnpairedPreference(pad_token_id=0)
         examples = [
@@ -289,7 +291,7 @@ class TestDataCollatorForUnpairedPreference(TrlTestCase):
         torch.testing.assert_close(result["KL_input_ids"], expected_kl_input_ids)
 
 
-class TestKTOTrainer(TrlTestCase):
+class TestKTOTrainer(E3RMTestCase):
     def setup_method(self):
         self.model_id = "trl-internal-testing/tiny-Qwen2ForCausalLM-2.5"
         self.model = AutoModelForCausalLM.from_pretrained(self.model_id, dtype="float32")
@@ -1375,7 +1377,7 @@ class TestKTOTrainer(TrlTestCase):
             train_dataset=dataset,
         )
 
-        for tag in ["kto", "trl"]:
+        for tag in ["kto", "e3_rm"]:
             assert tag in trainer.model.model_tags
 
     @require_peft
@@ -1388,7 +1390,7 @@ class TestKTOTrainer(TrlTestCase):
             peft_config=LoraConfig(),
         )
 
-        for tag in ["kto", "trl"]:
+        for tag in ["kto", "e3_rm"]:
             assert tag in trainer.model.model_tags
 
     @require_peft
@@ -1489,7 +1491,7 @@ class TestKTOTrainer(TrlTestCase):
 
 
 @require_vision
-class TestKTOTrainerVLM(TrlTestCase):
+class TestKTOTrainerVLM(E3RMTestCase):
     @pytest.mark.parametrize(
         "model_id",
         [

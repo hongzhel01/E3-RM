@@ -1,0 +1,27 @@
+# Copyright 2020-2026 The HuggingFace Team. All rights reserved.
+# Modified for E3-RM: namespace migration and maintenance comments (2026-10-28).
+# 组织公开接口与延迟导入，避免未使用功能提前加载可选依赖。
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Generation backends for E3-RM trainers."""
+
+from ..import_utils import is_vllm_available
+
+
+__all__ = []
+
+if is_vllm_available():
+    from .vllm_generation import VLLMGeneration
+
+    __all__.append("VLLMGeneration")

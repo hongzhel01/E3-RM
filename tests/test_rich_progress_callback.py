@@ -1,4 +1,6 @@
 # Copyright 2020-2026 The HuggingFace Team. All rights reserved.
+# Modified for E3-RM: namespace migration and maintenance comments (2026-10-28).
+# 验证迁移后公开行为；外部 tiny 模型与数据集 ID 保持真实来源。
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,9 +19,9 @@ import torch.nn as nn
 from datasets import Dataset
 from transformers import Trainer, TrainingArguments
 
-from trl.trainer.callbacks import RichProgressCallback
+from e3_rm.trainer.callbacks import RichProgressCallback
 
-from .testing_utils import TrlTestCase, require_rich
+from .testing_utils import E3RMTestCase, require_rich
 
 
 class DummyModel(nn.Module):
@@ -32,7 +34,7 @@ class DummyModel(nn.Module):
 
 
 @require_rich
-class TestRichProgressCallback(TrlTestCase):
+class TestRichProgressCallback(E3RMTestCase):
     def setup_method(self):
         self.dummy_model = DummyModel()
         self.dummy_train_dataset = Dataset.from_list([{"x": 1.0, "y": 2.0}] * 5)

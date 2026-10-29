@@ -1,4 +1,6 @@
 # Copyright 2020-2026 The HuggingFace Team. All rights reserved.
+# Modified for E3-RM: namespace migration and maintenance comments (2026-10-28).
+# 验证迁移后公开行为；外部 tiny 模型与数据集 ID 保持真实来源。
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,16 +21,16 @@ from unittest.mock import call, patch
 from datasets import load_dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig, Trainer, TrainingArguments
 
-from trl import BEMACallback, LogCompletionsCallback
+from e3_rm import BEMACallback, LogCompletionsCallback
 
-from .testing_utils import TrlTestCase, require_comet, require_wandb
+from .testing_utils import E3RMTestCase, require_comet, require_wandb
 
 
-class TestLogCompletionsCallback(TrlTestCase):
+class TestLogCompletionsCallback(E3RMTestCase):
     def setup_method(self):
         self.model = AutoModelForCausalLM.from_pretrained("trl-internal-testing/tiny-Qwen2ForCausalLM-2.5")
         self.tokenizer = AutoTokenizer.from_pretrained("trl-internal-testing/tiny-Qwen2ForCausalLM-2.5")
-        # `Trainer` realigns the configs at train time, so mirror the pad token as the TRL trainers do at init.
+        # `Trainer` realigns the configs at train time, so mirror the pad token as the E3-RM trainers do at init.
         self.model.config.pad_token_id = self.tokenizer.pad_token_id
         dataset = load_dataset("trl-internal-testing/zen", "standard_prompt_only")
         dataset["train"] = dataset["train"].select(range(8))
@@ -118,11 +120,11 @@ class TestLogCompletionsCallback(TrlTestCase):
         assert all(table["fileName"] == "completions.csv" for table in tables)
 
 
-class TestBEMACallback(TrlTestCase):
+class TestBEMACallback(E3RMTestCase):
     def setup_method(self):
         self.model = AutoModelForCausalLM.from_pretrained("trl-internal-testing/tiny-Qwen2ForCausalLM-2.5")
         self.tokenizer = AutoTokenizer.from_pretrained("trl-internal-testing/tiny-Qwen2ForCausalLM-2.5")
-        # `Trainer` realigns the configs at train time, so mirror the pad token as the TRL trainers do at init.
+        # `Trainer` realigns the configs at train time, so mirror the pad token as the E3-RM trainers do at init.
         self.model.config.pad_token_id = self.tokenizer.pad_token_id
         dataset = load_dataset("trl-internal-testing/zen", "standard_language_modeling")
 

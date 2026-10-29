@@ -1,4 +1,6 @@
 # Copyright 2020-2026 The HuggingFace Team. All rights reserved.
+# Modified for E3-RM: namespace migration and maintenance comments (2026-10-28).
+# 验证迁移后公开行为；外部 tiny 模型与数据集 ID 保持真实来源。
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +19,7 @@ import threading
 
 import pytest
 
-from trl.rewards import (
+from e3_rm.rewards import (
     accuracy_reward,
     get_cosine_scaled_reward,
     get_repetition_penalty_reward,
@@ -26,10 +28,10 @@ from trl.rewards import (
     think_format_reward,
 )
 
-from .testing_utils import TrlTestCase, require_math_latex
+from .testing_utils import E3RMTestCase, require_math_latex
 
 
-class TestThinkFormatReward(TrlTestCase):
+class TestThinkFormatReward(E3RMTestCase):
     def test_valid_format(self):
         completions = [
             "<think>This is my reasoning.</think>This is my answer.",  # Simple, one-line reasoning

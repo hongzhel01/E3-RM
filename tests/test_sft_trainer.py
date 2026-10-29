@@ -1,4 +1,6 @@
 # Copyright 2020-2026 The HuggingFace Team. All rights reserved.
+# Modified for E3-RM: namespace migration and maintenance comments (2026-10-28).
+# 验证迁移后公开行为；外部 tiny 模型与数据集 ID 保持真实来源。
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,11 +32,11 @@ from transformers.testing_utils import torch_device
 from transformers.trainer_pt_utils import LabelSmoother
 from transformers.utils import is_peft_available
 
-from trl import SFTConfig, SFTTrainer
-from trl.trainer.sft_trainer import DataCollatorForLanguageModeling
+from e3_rm import SFTConfig, SFTTrainer
+from e3_rm.trainer.sft_trainer import DataCollatorForLanguageModeling
 
 from .testing_utils import (
-    TrlTestCase,
+    E3RMTestCase,
     ignore_warnings,
     is_ampere_or_newer,
     require_bitsandbytes,
@@ -57,7 +59,7 @@ if is_peft_available():
     )
 
 
-class TestDataCollatorForLanguageModeling(TrlTestCase):
+class TestDataCollatorForLanguageModeling(E3RMTestCase):
     def test_basic_padding(self):
         """Test basic padding."""
         collator = DataCollatorForLanguageModeling(pad_token_id=0)
@@ -294,7 +296,7 @@ class TestDataCollatorForLanguageModeling(TrlTestCase):
         assert torch.equal(result[1], torch.arange(3))
 
 
-class TestSFTTrainer(TrlTestCase):
+class TestSFTTrainer(E3RMTestCase):
     def test_init_with_training_arguments(self):
         dataset = load_dataset("trl-internal-testing/zen", "standard_language_modeling", split="train")
         args = TrainingArguments(output_dir=self.tmp_dir, report_to="none")
@@ -846,7 +848,7 @@ class TestSFTTrainer(TrlTestCase):
         dataset = load_dataset("trl-internal-testing/zen", "standard_language_modeling", split="train")
         training_args = SFTConfig(output_dir=self.tmp_dir, report_to="none")
 
-        with caplog.at_level("WARNING", logger="trl.trainer.sft_trainer"):
+        with caplog.at_level("WARNING", logger="e3_rm.trainer.sft_trainer"):
             SFTTrainer(
                 model=model_id,
                 args=training_args,
@@ -2128,7 +2130,7 @@ class TestSFTTrainer(TrlTestCase):
             train_dataset=dataset,
         )
 
-        for tag in ["sft", "trl"]:
+        for tag in ["sft", "e3_rm"]:
             assert tag in trainer.model.model_tags
 
     @require_peft
@@ -2141,7 +2143,7 @@ class TestSFTTrainer(TrlTestCase):
             peft_config=LoraConfig(),
         )
 
-        for tag in ["sft", "trl"]:
+        for tag in ["sft", "e3_rm"]:
             assert tag in trainer.model.model_tags
 
     @pytest.mark.parametrize(

@@ -1,4 +1,6 @@
 # Copyright 2020-2026 The HuggingFace Team. All rights reserved.
+# Modified for E3-RM: namespace migration and maintenance comments (2026-10-28).
+# 验证迁移后公开行为；外部 tiny 模型与数据集 ID 保持真实来源。
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,22 +22,22 @@ from unittest.mock import patch
 import pytest
 import yaml
 
-from .testing_utils import TrlTestCase
+from .testing_utils import E3RMTestCase
 
 
 @pytest.mark.parametrize("command", ["distillation", "dpo", "grpo", "kto", "reward", "rloo", "sft"])
 def test_help_no_type_error(command):
     # Regression test for https://github.com/huggingface/trl/issues/5099:
     # TrainingArguments help strings with unescaped "%" caused TypeError in argparse.
-    from trl.cli import main
+    from e3_rm.cli import main
 
     with pytest.raises(SystemExit) as exc_info:
-        with patch("sys.argv", ["trl", command, "--help"]), patch("sys.stdout", new_callable=StringIO):
+        with patch("sys.argv", ["e3-rm", command, "--help"]), patch("sys.stdout", new_callable=StringIO):
             main()
     assert exc_info.value.code == 0
 
 
-class TestCLI(TrlTestCase):
+class TestCLI(E3RMTestCase):
     @pytest.mark.parametrize(
         "command,trainer_name",
         [
@@ -50,7 +52,7 @@ class TestCLI(TrlTestCase):
     )
     @pytest.mark.parametrize("checkpoint", [None, "checkpoint-2"])
     def test_resume_argument(self, command, trainer_name, checkpoint):
-        script = importlib.import_module(f"trl.scripts.{command}")
+        script = importlib.import_module(f"e3_rm.scripts.{command}")
         argv = ["--output_dir", self.tmp_dir, "--dataset_name", "unused", "--report_to", "none"]
         if command == "distillation":
             argv += ["--teacher_model_name_or_path", "unused"]
@@ -58,14 +60,14 @@ class TestCLI(TrlTestCase):
             argv += ["--resume_from_checkpoint", checkpoint]
         parsed = script.make_parser().parse_args_and_config(argv)
 
-        with patch("datasets.load_dataset", return_value={"train": []}), patch(f"trl.{trainer_name}") as trainer:
+        with patch("datasets.load_dataset", return_value={"train": []}), patch(f"e3_rm.{trainer_name}") as trainer:
             script.main(*parsed)
 
         trainer.return_value.train.assert_called_once_with(resume_from_checkpoint=checkpoint)
 
     def test_sft_resume(self):
-        from trl import SFTTrainer
-        from trl.scripts import sft
+        from e3_rm import SFTTrainer
+        from e3_rm.scripts import sft
 
         argv = [
             "--output_dir",
@@ -102,72 +104,72 @@ class TestCLI(TrlTestCase):
         assert step.call_count == 1
 
     def test_distillation(self):
-        from trl.cli import main
+        from e3_rm.cli import main
 
-        command = f"trl distillation --output_dir {self.tmp_dir} --model_name_or_path trl-internal-testing/tiny-Qwen2ForCausalLM-2.5 --teacher_model_name_or_path trl-internal-testing/tiny-Qwen2ForCausalLM-2.5 --dataset_name trl-internal-testing/zen --dataset_config standard_prompt_only --max_completion_length 32 --report_to none"
+        command = f"e3-rm distillation --output_dir {self.tmp_dir} --model_name_or_path trl-internal-testing/tiny-Qwen2ForCausalLM-2.5 --teacher_model_name_or_path trl-internal-testing/tiny-Qwen2ForCausalLM-2.5 --dataset_name trl-internal-testing/zen --dataset_config standard_prompt_only --max_completion_length 32 --report_to none"
         with patch("sys.argv", command.split(" ")):
             main()
 
     def test_dpo(self):
-        from trl.cli import main
+        from e3_rm.cli import main
 
-        command = f"trl dpo --output_dir {self.tmp_dir} --model_name_or_path trl-internal-testing/tiny-Qwen2ForCausalLM-2.5 --dataset_name trl-internal-testing/zen --dataset_config standard_preference --report_to none"
+        command = f"e3-rm dpo --output_dir {self.tmp_dir} --model_name_or_path trl-internal-testing/tiny-Qwen2ForCausalLM-2.5 --dataset_name trl-internal-testing/zen --dataset_config standard_preference --report_to none"
         with patch("sys.argv", command.split(" ")):
             main()
 
     def test_dpo_multiple_loss_types(self):
-        from trl.cli import main
+        from e3_rm.cli import main
 
-        command = f"trl dpo --output_dir {self.tmp_dir} --model_name_or_path trl-internal-testing/tiny-Qwen2ForCausalLM-2.5 --dataset_name trl-internal-testing/zen --dataset_config standard_preference --report_to none --loss_type sigmoid bco_pair --loss_weights 1.0 0.5"
+        command = f"e3-rm dpo --output_dir {self.tmp_dir} --model_name_or_path trl-internal-testing/tiny-Qwen2ForCausalLM-2.5 --dataset_name trl-internal-testing/zen --dataset_config standard_preference --report_to none --loss_type sigmoid bco_pair --loss_weights 1.0 0.5"
         with patch("sys.argv", command.split(" ")):
             main()
 
     @patch("sys.stdout", new_callable=StringIO)
     def test_env(self, mock_stdout):
-        from trl.cli import main
+        from e3_rm.cli import main
 
-        command = "trl env"
+        command = "e3-rm env"
         with patch("sys.argv", command.split(" ")):
             main()
-        assert "TRL version: " in mock_stdout.getvalue().strip()
+        assert "E3-RM version: " in mock_stdout.getvalue().strip()
 
     def test_grpo(self):
-        from trl.cli import main
+        from e3_rm.cli import main
 
-        command = f"trl grpo --output_dir {self.tmp_dir} --model_name_or_path trl-internal-testing/tiny-Qwen2ForCausalLM-2.5 --reward_model_name_or_path trl-internal-testing/tiny-Qwen2ForSequenceClassification-2.5 --dataset_name trl-internal-testing/zen --dataset_config standard_prompt_only --num_generations 4 --max_completion_length 32 --report_to none"
+        command = f"e3-rm grpo --output_dir {self.tmp_dir} --model_name_or_path trl-internal-testing/tiny-Qwen2ForCausalLM-2.5 --reward_model_name_or_path trl-internal-testing/tiny-Qwen2ForSequenceClassification-2.5 --dataset_name trl-internal-testing/zen --dataset_config standard_prompt_only --num_generations 4 --max_completion_length 32 --report_to none"
         with patch("sys.argv", command.split(" ")):
             main()
 
     def test_kto(self):
-        from trl.cli import main
+        from e3_rm.cli import main
 
-        command = f"trl kto --output_dir {self.tmp_dir} --model_name_or_path trl-internal-testing/tiny-Qwen2ForCausalLM-2.5 --dataset_name trl-internal-testing/zen --dataset_config standard_unpaired_preference --report_to none"
+        command = f"e3-rm kto --output_dir {self.tmp_dir} --model_name_or_path trl-internal-testing/tiny-Qwen2ForCausalLM-2.5 --dataset_name trl-internal-testing/zen --dataset_config standard_unpaired_preference --report_to none"
         with patch("sys.argv", command.split(" ")):
             main()
 
     def test_reward(self):
-        from trl.cli import main
+        from e3_rm.cli import main
 
-        command = f"trl reward --output_dir {self.tmp_dir} --model_name_or_path trl-internal-testing/tiny-Qwen2ForCausalLM-2.5 --dataset_name trl-internal-testing/zen --dataset_config standard_implicit_prompt_preference --report_to none"
+        command = f"e3-rm reward --output_dir {self.tmp_dir} --model_name_or_path trl-internal-testing/tiny-Qwen2ForCausalLM-2.5 --dataset_name trl-internal-testing/zen --dataset_config standard_implicit_prompt_preference --report_to none"
         with patch("sys.argv", command.split(" ")):
             main()
 
     def test_rloo(self):
-        from trl.cli import main
+        from e3_rm.cli import main
 
-        command = f"trl rloo --output_dir {self.tmp_dir} --model_name_or_path trl-internal-testing/tiny-Qwen2ForCausalLM-2.5 --reward_model_name_or_path trl-internal-testing/tiny-Qwen2ForSequenceClassification-2.5 --dataset_name trl-internal-testing/zen --dataset_config standard_prompt_only --num_generations 2 --max_completion_length 32 --report_to none"
+        command = f"e3-rm rloo --output_dir {self.tmp_dir} --model_name_or_path trl-internal-testing/tiny-Qwen2ForCausalLM-2.5 --reward_model_name_or_path trl-internal-testing/tiny-Qwen2ForSequenceClassification-2.5 --dataset_name trl-internal-testing/zen --dataset_config standard_prompt_only --num_generations 2 --max_completion_length 32 --report_to none"
         with patch("sys.argv", command.split(" ")):
             main()
 
     def test_sft(self):
-        from trl.cli import main
+        from e3_rm.cli import main
 
-        command = f"trl sft --output_dir {self.tmp_dir} --model_name_or_path trl-internal-testing/tiny-Qwen2ForCausalLM-2.5 --dataset_name trl-internal-testing/zen --dataset_config standard_language_modeling --report_to none"
+        command = f"e3-rm sft --output_dir {self.tmp_dir} --model_name_or_path trl-internal-testing/tiny-Qwen2ForCausalLM-2.5 --dataset_name trl-internal-testing/zen --dataset_config standard_language_modeling --report_to none"
         with patch("sys.argv", command.split(" ")):
             main()
 
     def test_sft_config_file(self):
-        from trl.cli import main
+        from e3_rm.cli import main
 
         output_dir = os.path.join(self.tmp_dir, "output")
 
@@ -185,7 +187,7 @@ class TestCLI(TrlTestCase):
             yaml.dump(config_content, config_file)
 
         # Test the CLI with config file
-        command = f"trl sft --config {config_path}"
+        command = f"e3-rm sft --config {config_path}"
         with patch("sys.argv", command.split(" ")):
             main()
 
@@ -194,18 +196,18 @@ class TestCLI(TrlTestCase):
 
     def test_vllm_serve_config_file(self):
         """
-        Test `trl vllm-serve --config config.yaml` must not raise "the following arguments are required: --model" when
+        Test `e3-rm vllm-serve --config config.yaml` must not raise "the following arguments are required: --model" when
         the required field is satisfied by the config file rather than the command line.
         """
-        from trl.cli import main
+        from e3_rm.cli import main
 
         config_path = os.path.join(self.tmp_dir, "config.yaml")
         with open(config_path, "w", encoding="utf-8") as f:
             yaml.dump({"model": "trl-internal-testing/tiny-Qwen2ForCausalLM-2.5"}, f)
 
         # Patch the actual function that `VllmServeCommand.run` imports as `vllm_serve_main`
-        with patch("trl.scripts.vllm_serve.main") as mock_serve:
-            with patch("sys.argv", ["trl", "vllm-serve", "--config", config_path]):
+        with patch("e3_rm.scripts.vllm_serve.main") as mock_serve:
+            with patch("sys.argv", ["e3-rm", "vllm-serve", "--config", config_path]):
                 main()
 
         mock_serve.assert_called_once()
@@ -213,7 +215,7 @@ class TestCLI(TrlTestCase):
         assert script_args.model == "trl-internal-testing/tiny-Qwen2ForCausalLM-2.5"
 
 
-class TestCLIModelInitKwargs(TrlTestCase):
+class TestCLIModelInitKwargs(E3RMTestCase):
     @pytest.mark.parametrize(
         "command,trainer_name",
         [
@@ -231,7 +233,7 @@ class TestCLIModelInitKwargs(TrlTestCase):
         [None, {}, {"revision": "custom", "attn_implementation": "eager", "attention_dropout": 0.0}],
     )
     def test_model_init_kwargs(self, command, trainer_name, model_init_kwargs):
-        script = importlib.import_module(f"trl.scripts.{command}")
+        script = importlib.import_module(f"e3_rm.scripts.{command}")
         argv = ["--output_dir", self.tmp_dir, "--dataset_name", "unused", "--report_to", "none"]
         if command == "distillation":
             argv += ["--teacher_model_name_or_path", "unused"]
@@ -245,14 +247,14 @@ class TestCLIModelInitKwargs(TrlTestCase):
             **(model_init_kwargs or {}),
         }
 
-        with patch("datasets.load_dataset", return_value={"train": []}), patch(f"trl.{trainer_name}") as trainer:
+        with patch("datasets.load_dataset", return_value={"train": []}), patch(f"e3_rm.{trainer_name}") as trainer:
             script.main(*parsed)
 
         assert trainer.call_args.kwargs["args"].model_init_kwargs == expected
 
     def test_sft_model_init_kwargs(self):
-        from trl import SFTTrainer
-        from trl.scripts import sft
+        from e3_rm import SFTTrainer
+        from e3_rm.scripts import sft
 
         argv = [
             "--output_dir",

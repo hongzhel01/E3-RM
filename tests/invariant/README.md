@@ -8,13 +8,13 @@ Configs are grouped into **equivalence classes**: configs in the same class must
 
 Recording the references is a separate concern from testing them, so it's a separate entry point (`python -m tests.invariant.test_invariant`).
 
-Each config is a `trl <method>` CLI invocation with a fixed set of args. The harness shells out (`subprocess.run(["trl", method, ...])`), the CLI runs end to end, writes `trainer_state.json` to its `--output_dir`, and the harness parses the `log_history` into a `Trajectory`.
+Each config is a `e3_rm <method>` CLI invocation with a fixed set of args. The harness shells out (`subprocess.run(["e3-rm", method, ...])`), the CLI runs end to end, writes `trainer_state.json` to its `--output_dir`, and the harness parses the `log_history` into a `Trajectory`.
 
 This means the suite tests the actual user-facing entry point, not the Python API. Catches CLI-only bugs (arg parsing, defaults, dispatch) for free. Distributed runs are an additive change: prepend `accelerate launch --config_file <strategy>.yaml` to the same command.
 
 ## Scope (initial)
 
-- Trainers: `trl sft`, `trl dpo`
+- Trainers: `e3-rm sft`, `e3-rm dpo`
 - Model: `Qwen/Qwen2.5-0.5B-Instruct` (pinned revision)
 - Equivalence classes:
   - `sft`: `sft_default` (canonical), `sft_pdb1_gas8` (gradient accumulation), `sft_attn_fa2_kernels` (FA2 via kernels)
@@ -30,7 +30,7 @@ Per optimizer step: `loss`, `grad_norm`. One JSON per equivalence class in `refe
 ```json
 {
   "config": {"name": "sft_default", "method": "sft", "args": {...}},
-  "env":    {"accelerate": "...", "torch": "...", "transformers": "...", "trl": "...", "gpu": "H100-80GB"},
+  "env":    {"accelerate": "...", "torch": "...", "transformers": "...", "e3_rm": "...", "gpu": "H100-80GB"},
   "steps":  [{"step": 1, "loss": 1.234, "grad_norm": 0.567}, ...]
 }
 ```

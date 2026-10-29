@@ -1,4 +1,6 @@
 # Copyright 2020-2026 The HuggingFace Team. All rights reserved.
+# Modified for E3-RM: namespace migration and maintenance comments (2026-10-28).
+# 验证迁移后公开行为；外部 tiny 模型与数据集 ID 保持真实来源。
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +23,7 @@ from datasets import Dataset, DatasetDict
 from packaging.version import Version
 from transformers import AutoProcessor, AutoTokenizer, is_vision_available
 
-from trl.data_utils import (
+from e3_rm.data_utils import (
     apply_chat_template,
     extract_prompt,
     is_conversational,
@@ -35,7 +37,7 @@ from trl.data_utils import (
     unpair_preference_dataset,
 )
 
-from .testing_utils import TrlTestCase, require_vision
+from .testing_utils import E3RMTestCase, require_vision
 
 
 if is_vision_available():
@@ -266,7 +268,7 @@ class TestPrepareMultimodalMessages:
         assert messages == expected
 
 
-class TestIsConversational(TrlTestCase):
+class TestIsConversational(E3RMTestCase):
     # fmt: off
     conversational_examples = [
         {  # Language modeling
@@ -402,7 +404,7 @@ class TestIsConversational(TrlTestCase):
         assert not is_conversational(example)
 
 
-class TestIsConversationalFromValue(TrlTestCase):
+class TestIsConversationalFromValue(E3RMTestCase):
     def test_positive_1(self):
         example = {
             "conversations": [
@@ -426,7 +428,7 @@ class TestIsConversationalFromValue(TrlTestCase):
         assert not is_conversational_from_value(example)
 
 
-class TestApplyChatTemplate(TrlTestCase):
+class TestApplyChatTemplate(E3RMTestCase):
     tokenizers = [
         pytest.param(
             "trl-internal-testing/tiny-BeamForCausalLM",
@@ -713,7 +715,7 @@ class TestApplyChatTemplate(TrlTestCase):
         assert "get_current_temperature" not in result_without_tools["prompt"]
 
 
-class TestApplyChatTemplateHarmony(TrlTestCase):
+class TestApplyChatTemplateHarmony(E3RMTestCase):
     def test_language_modeling(self):
         messages = {
             "messages": [
@@ -939,7 +941,7 @@ class TestApplyChatTemplateHarmony(TrlTestCase):
         assert output["label"]
 
 
-class TestUnpairPreferenceDataset(TrlTestCase):
+class TestUnpairPreferenceDataset(E3RMTestCase):
     paired_dataset = Dataset.from_dict(
         {
             "prompt": ["The sky is", "The sun is"],
@@ -1040,7 +1042,7 @@ class TestUnpairPreferenceDataset(TrlTestCase):
         )
 
 
-class TestExtractPrompt(TrlTestCase):
+class TestExtractPrompt(E3RMTestCase):
     example_implicit_prompt_conversational = {
         "chosen": [
             {"role": "user", "content": "What color is the sky?"},
@@ -1116,7 +1118,7 @@ class TestExtractPrompt(TrlTestCase):
         assert example_extracted_prompt == self.example_explicit_prompt_standard, "The prompt should remain unchanged."
 
 
-class TestPackDatasetWrapped(TrlTestCase):
+class TestPackDatasetWrapped(E3RMTestCase):
     def test_with_dataset(self):
         examples = {
             "input_ids": [[1, 2, 3], [4, 5, 6, 7], [8]],
@@ -1168,7 +1170,7 @@ class TestPackDatasetWrapped(TrlTestCase):
         assert dataset.to_dict() == expected_output
 
 
-class TestPackDatasetBfd(TrlTestCase):
+class TestPackDatasetBfd(E3RMTestCase):
     def test_with_dataset(self):
         examples = {
             "input_ids": [[1, 2, 3], [4, 5, 6, 7], [8]],
@@ -1275,7 +1277,7 @@ class TestPackDatasetBfd(TrlTestCase):
         assert dataset.to_dict() == expected_output
 
 
-class TestMaybeConvertToChatML(TrlTestCase):
+class TestMaybeConvertToChatML(E3RMTestCase):
     def test_with_conversations_key(self):
         # Particular case where the key is "conversations": we rename it to "messages"
         example = {

@@ -1,4 +1,6 @@
 # Copyright 2020-2026 The HuggingFace Team. All rights reserved.
+# Modified for E3-RM: namespace migration and maintenance comments (2026-10-28).
+# 验证迁移后公开行为；外部 tiny 模型与数据集 ID 保持真实来源。
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,11 +23,11 @@ from datasets import DatasetDict, IterableDatasetDict, load_dataset
 from transformers import AutoModelForSequenceClassification, AutoTokenizer, BitsAndBytesConfig
 from transformers.utils import is_peft_available
 
-from trl import RewardConfig, RewardTrainer
-from trl.trainer.reward_trainer import DataCollatorForPreference
+from e3_rm import RewardConfig, RewardTrainer
+from e3_rm.trainer.reward_trainer import DataCollatorForPreference
 
 from .testing_utils import (
-    TrlTestCase,
+    E3RMTestCase,
     require_bitsandbytes,
     require_peft,
     require_torch_accelerator,
@@ -36,7 +38,7 @@ if is_peft_available():
     from peft import LoraConfig, get_peft_model
 
 
-class TestDataCollatorForPreference(TrlTestCase):
+class TestDataCollatorForPreference(E3RMTestCase):
     def test_basic_padding(self):
         """Test basic padding functionality without completion masks."""
         collator = DataCollatorForPreference(pad_token_id=0)
@@ -112,7 +114,7 @@ class TestDataCollatorForPreference(TrlTestCase):
         torch.testing.assert_close(result["margin"], torch.tensor([0.1, 0.2]))
 
 
-class TestRewardTrainer(TrlTestCase):
+class TestRewardTrainer(E3RMTestCase):
     def test_raises_error_when_model_num_labels_not_one(self):
         """Test that RewardTrainer raises ValueError when model doesn't have num_labels=1."""
         model = AutoModelForSequenceClassification.from_pretrained(
@@ -1040,7 +1042,7 @@ class TestRewardTrainer(TrlTestCase):
             train_dataset=dataset,
         )
 
-        for tag in ["reward-trainer", "trl"]:
+        for tag in ["reward-trainer", "e3_rm"]:
             assert tag in trainer.model.model_tags
 
     @require_peft
@@ -1053,7 +1055,7 @@ class TestRewardTrainer(TrlTestCase):
             peft_config=LoraConfig(),
         )
 
-        for tag in ["reward-trainer", "trl"]:
+        for tag in ["reward-trainer", "e3_rm"]:
             assert tag in trainer.model.model_tags
 
     def test_train_with_margin(self):

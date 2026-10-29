@@ -1,4 +1,6 @@
 # Copyright 2020-2026 The HuggingFace Team. All rights reserved.
+# Modified for E3-RM: namespace migration and maintenance comments (2026-10-28).
+# 验证迁移后公开行为；外部 tiny 模型与数据集 ID 保持真实来源。
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,13 +35,10 @@ from transformers.utils import (
     is_vision_available,
 )
 
-from trl.chat_template_utils import _SUPPORTS_RESPONSE_TEMPLATE
-from trl.import_utils import (
-    is_harbor_available,
+from e3_rm.chat_template_utils import _SUPPORTS_RESPONSE_TEMPLATE
+from e3_rm.import_utils import (
     is_jmespath_available,
     is_math_verify_available,
-    is_mergekit_available,
-    is_openreward_available,
     is_requests_available,
     is_vllm_available,
 )
@@ -47,11 +46,8 @@ from trl.import_utils import (
 
 require_bitsandbytes = pytest.mark.skipif(not is_bitsandbytes_available(), reason="test requires bitsandbytes")
 require_comet = pytest.mark.skipif(not is_comet_available(), reason="test requires comet_ml")
-require_harbor = pytest.mark.skipif(not is_harbor_available(), reason="test requires harbor")
 require_kernels = pytest.mark.skipif(not is_kernels_available(), reason="test requires kernels")
 require_math_latex = pytest.mark.skipif(not is_math_verify_available(), reason="test requires math_verify")
-require_mergekit = pytest.mark.skipif(not is_mergekit_available(), reason="test requires mergekit")
-require_openreward = pytest.mark.skipif(not is_openreward_available(), reason="test requires openreward")
 require_peft = pytest.mark.skipif(not is_peft_available(), reason="test requires peft")
 require_requests = pytest.mark.skipif(not is_requests_available(), reason="test requires requests")
 # Response parsing needs jmespath only on transformers < 5.13, which ships the legacy `response_schema` parser; the
@@ -106,7 +102,7 @@ def is_bf16_supported() -> bool:
     return is_torch_bf16_gpu_available() or is_torch_xla_available()
 
 
-class TrlTestCase:
+class E3RMTestCase:
     @pytest.fixture(autouse=True)
     def set_tmp_dir(self, tmp_path):
         self.tmp_dir = str(tmp_path)

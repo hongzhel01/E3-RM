@@ -1,4 +1,6 @@
 # Copyright 2020-2026 The HuggingFace Team. All rights reserved.
+# Modified for E3-RM: namespace migration and maintenance comments (2026-10-28).
+# 验证迁移后公开行为；外部 tiny 模型与数据集 ID 保持真实来源。
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,11 +23,11 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from transformers.testing_utils import torch_device
 from transformers.utils import is_peft_available
 
-from trl import DPOConfig, DPOTrainer
-from trl.trainer.dpo_trainer import DataCollatorForPreference, DataCollatorForVisionPreference
+from e3_rm import DPOConfig, DPOTrainer
+from e3_rm.trainer.dpo_trainer import DataCollatorForPreference, DataCollatorForVisionPreference
 
 from .testing_utils import (
-    TrlTestCase,
+    E3RMTestCase,
     is_ampere_or_newer,
     is_bf16_supported,
     require_bitsandbytes,
@@ -42,7 +44,7 @@ if is_peft_available():
     from peft.utils import TaskType
 
 
-class TestDataCollatorForPreference(TrlTestCase):
+class TestDataCollatorForPreference(E3RMTestCase):
     def test_padding_and_masks(self):
         collator = DataCollatorForPreference(pad_token_id=0)
         examples = [
@@ -135,7 +137,7 @@ class TestDataCollatorForPreference(TrlTestCase):
         torch.testing.assert_close(result["input_ids"], expected_input_ids)
 
 
-class TestDataCollatorForVisionPreference(TrlTestCase):
+class TestDataCollatorForVisionPreference(E3RMTestCase):
     @pytest.mark.skipif(
         Version(transformers.__version__) < Version("5.3.0"),
         reason="mm_token_type_ids are returned by default since transformers-5.3.0 (see transformers#43972)",
@@ -167,7 +169,7 @@ class TestDataCollatorForVisionPreference(TrlTestCase):
         )
 
 
-class TestDPOTrainer(TrlTestCase):
+class TestDPOTrainer(E3RMTestCase):
     @pytest.mark.parametrize(
         "model_id",
         [
@@ -1470,7 +1472,7 @@ class TestDPOTrainer(TrlTestCase):
             train_dataset=dataset,
         )
 
-        for tag in ["dpo", "trl"]:
+        for tag in ["dpo", "e3_rm"]:
             assert tag in trainer.model.model_tags
 
     @require_peft
@@ -1483,7 +1485,7 @@ class TestDPOTrainer(TrlTestCase):
             peft_config=LoraConfig(),
         )
 
-        for tag in ["dpo", "trl"]:
+        for tag in ["dpo", "e3_rm"]:
             assert tag in trainer.model.model_tags
 
     @require_peft
@@ -1586,7 +1588,7 @@ class TestDPOTrainer(TrlTestCase):
 
 
 @require_vision
-class TestDPOTrainerVLM(TrlTestCase):
+class TestDPOTrainerVLM(E3RMTestCase):
     @pytest.mark.parametrize(
         "model_id",
         [

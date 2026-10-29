@@ -1,4 +1,6 @@
 # Copyright 2020-2026 The HuggingFace Team. All rights reserved.
+# Modified for E3-RM: namespace migration and maintenance comments (2026-10-28).
+# 验证迁移后公开行为；外部 tiny 模型与数据集 ID 保持真实来源。
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,7 +25,7 @@ from datasets import load_dataset
 from packaging.version import Version
 from transformers import AutoModelForCausalLM, AutoModelForSequenceClassification
 
-from trl import (
+from e3_rm import (
     DistillationConfig,
     DistillationTrainer,
     DPOConfig,
@@ -39,9 +41,9 @@ from trl import (
     SFTConfig,
     SFTTrainer,
 )
-from trl.trainer.utils import add_fused_lm_head
+from e3_rm.trainer.utils import add_fused_lm_head
 
-from ..testing_utils import TrlTestCase, require_torch_multi_accelerator
+from ..testing_utils import E3RMTestCase, require_torch_multi_accelerator
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -61,7 +63,7 @@ def get_config_path(lazy_shared_datadir):
 
 
 @require_torch_multi_accelerator
-class TestDistributed(TrlTestCase):
+class TestDistributed(E3RMTestCase):
     @pytest.mark.parametrize(
         "config",
         [
@@ -87,7 +89,7 @@ class TestDistributed(TrlTestCase):
         # fmt: off
         run_command(
             [
-                "accelerate", "launch", "--config_file", get_config_path(config), "trl/scripts/sft.py",
+                "accelerate", "launch", "--config_file", get_config_path(config), "e3_rm/scripts/sft.py",
                 "--output_dir", self.tmp_dir,
                 "--model_name_or_path", "trl-internal-testing/tiny-Qwen2ForCausalLM-2.5",
                 "--dataset_name", "trl-internal-testing/zen",
@@ -122,7 +124,7 @@ class TestDistributed(TrlTestCase):
         # fmt: off
         run_command(
             [
-                "accelerate", "launch", "--config_file", get_config_path(config), "trl/scripts/sft.py",
+                "accelerate", "launch", "--config_file", get_config_path(config), "e3_rm/scripts/sft.py",
                 "--output_dir", self.tmp_dir,
                 "--model_name_or_path", "trl-internal-testing/tiny-Qwen2ForCausalLM-2.5",
                 "--dataset_name", "trl-internal-testing/zen",
@@ -158,7 +160,7 @@ class TestDistributed(TrlTestCase):
         # fmt: off
         run_command(
             [
-                "accelerate", "launch", "--config_file", get_config_path(config), "trl/scripts/dpo.py",
+                "accelerate", "launch", "--config_file", get_config_path(config), "e3_rm/scripts/dpo.py",
                 "--output_dir", self.tmp_dir,
                 "--model_name_or_path", "trl-internal-testing/tiny-Qwen2ForCausalLM-2.5",
                 "--dataset_name", "trl-internal-testing/zen",
@@ -196,7 +198,7 @@ class TestDistributed(TrlTestCase):
         # fmt: off
         run_command(
             [
-                "accelerate", "launch", "--config_file", get_config_path(config), "trl/scripts/dpo.py",
+                "accelerate", "launch", "--config_file", get_config_path(config), "e3_rm/scripts/dpo.py",
                 "--output_dir", self.tmp_dir,
                 "--model_name_or_path", "trl-internal-testing/tiny-Qwen2ForCausalLM-2.5",
                 "--dataset_name", "trl-internal-testing/zen",
@@ -233,7 +235,7 @@ class TestDistributed(TrlTestCase):
         # fmt: off
         run_command(
             [
-                "accelerate", "launch", "--config_file", get_config_path(config), "trl/scripts/kto.py",
+                "accelerate", "launch", "--config_file", get_config_path(config), "e3_rm/scripts/kto.py",
                 "--output_dir", self.tmp_dir,
                 "--model_name_or_path", "trl-internal-testing/tiny-Qwen2ForCausalLM-2.5",
                 "--dataset_name", "trl-internal-testing/zen",
@@ -270,7 +272,7 @@ class TestDistributed(TrlTestCase):
         # fmt: off
         run_command(
             [
-                "accelerate", "launch", "--config_file", get_config_path(config), "trl/scripts/sft.py",
+                "accelerate", "launch", "--config_file", get_config_path(config), "e3_rm/scripts/sft.py",
                 "--output_dir", self.tmp_dir,
                 "--model_name_or_path", "trl-internal-testing/tiny-Qwen2ForCausalLM-2.5",
                 "--dataset_name", "trl-internal-testing/zen",
@@ -309,7 +311,7 @@ class TestDistributed(TrlTestCase):
         # fmt: off
         run_command(
             [
-                "accelerate", "launch", "--config_file", get_config_path(config), "trl/scripts/sft.py",
+                "accelerate", "launch", "--config_file", get_config_path(config), "e3_rm/scripts/sft.py",
                 "--output_dir", self.tmp_dir,
                 "--model_name_or_path", "trl-internal-testing/tiny-Qwen2ForCausalLM-2.5",
                 "--dataset_name", "trl-internal-testing/zen",
@@ -345,7 +347,7 @@ class TestDistributed(TrlTestCase):
         # fmt: off
         run_command(
             [
-                "accelerate", "launch", "--config_file", get_config_path(config), "trl/scripts/reward.py",
+                "accelerate", "launch", "--config_file", get_config_path(config), "e3_rm/scripts/reward.py",
                 "--output_dir", self.tmp_dir,
                 "--model_name_or_path", "trl-internal-testing/tiny-Qwen2ForCausalLM-2.5",
                 "--dataset_name", "trl-internal-testing/zen",
@@ -387,7 +389,7 @@ class TestDistributed(TrlTestCase):
         # fmt: off
         run_command(
             [
-                "accelerate", "launch", "--config_file", get_config_path(config), "trl/scripts/rloo.py",
+                "accelerate", "launch", "--config_file", get_config_path(config), "e3_rm/scripts/rloo.py",
                 "--output_dir", self.tmp_dir,
                 "--model_name_or_path", "trl-internal-testing/tiny-Qwen2ForCausalLM-2.5",
                 "--dataset_name", "trl-internal-testing/zen",
@@ -424,7 +426,7 @@ class TestDistributed(TrlTestCase):
         # fmt: off
         run_command(
             [
-                "accelerate", "launch", "--config_file", get_config_path(config), "trl/scripts/grpo.py",
+                "accelerate", "launch", "--config_file", get_config_path(config), "e3_rm/scripts/grpo.py",
                 "--output_dir", self.tmp_dir,
                 "--model_name_or_path", "trl-internal-testing/tiny-Qwen2ForCausalLM-2.5",
                 "--dataset_name", "trl-internal-testing/zen",

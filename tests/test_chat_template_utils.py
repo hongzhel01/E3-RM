@@ -1,4 +1,6 @@
 # Copyright 2020-2026 The HuggingFace Team. All rights reserved.
+# Modified for E3-RM: namespace migration and maintenance comments (2026-10-28).
+# 验证迁移后公开行为；外部 tiny 模型与数据集 ID 保持真实来源。
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,8 +24,8 @@ import transformers
 from packaging.version import Version
 from transformers import AutoModelForCausalLM, AutoModelForSequenceClassification, AutoProcessor, AutoTokenizer
 
-from trl import clone_chat_template
-from trl.chat_template_utils import (
+from e3_rm import clone_chat_template
+from e3_rm.chat_template_utils import (
     _CHAT_TEMPLATES_DIR,
     _SUPPORTS_PARSE_RESPONSE_TOOLS,
     _SUPPORTS_RESPONSE_TEMPLATE,
@@ -47,9 +49,9 @@ from trl.chat_template_utils import (
     parse_response,
     supports_tool_calling,
 )
-from trl.data_utils import prepare_multimodal_messages
+from e3_rm.data_utils import prepare_multimodal_messages
 
-from .testing_utils import TrlTestCase, require_response_parsing, require_vision
+from .testing_utils import E3RMTestCase, require_response_parsing, require_vision
 
 
 def multiply(a: int, b: int) -> int:
@@ -88,7 +90,7 @@ def get_weather(zip_code: str, days: int, threshold: float, metric: bool, fields
     return "sunny"
 
 
-class TestCloneChatTemplate(TrlTestCase):
+class TestCloneChatTemplate(E3RMTestCase):
     def test_clone(self):
         # This tokenizer doesn't have a chat_template by default
         tokenizer = AutoTokenizer.from_pretrained("trl-internal-testing/tiny-GPT2LMHeadModel")

@@ -1,4 +1,6 @@
 # Copyright 2020-2026 The HuggingFace Team. All rights reserved.
+# Modified for E3-RM: namespace migration and maintenance comments (2026-10-28).
+# 验证迁移后公开行为；外部 tiny 模型与数据集 ID 保持真实来源。
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,15 +24,15 @@ from accelerate import PartialState
 from transformers.testing_utils import torch_device
 from transformers.utils import is_triton_available
 
-from trl.models.activation_offloading import OffloadActivations
+from e3_rm.models.activation_offloading import OffloadActivations
 
 from .testing_utils import require_torch_accelerator, require_triton
 
 
 if is_triton_available():
-    from trl.kernels import ChunkedLogProbFunction, selective_log_softmax_and_entropy
-    from trl.kernels.chunked_divergence import ChunkedDivergenceFunction
-    from trl.kernels.chunked_logprob import _addmm_fp32
+    from e3_rm.kernels import ChunkedLogProbFunction, selective_log_softmax_and_entropy
+    from e3_rm.kernels.chunked_divergence import ChunkedDivergenceFunction
+    from e3_rm.kernels.chunked_logprob import _addmm_fp32
 
 
 def reference(logits, index, temperature, row_mask):
@@ -60,12 +62,12 @@ class TestLogProbEntropy:
         # Exercise online normalization across blocks with sharply different maxima.
         base_logits[..., 1024:2048].sub_(20)
         base_logits.requires_grad_()
-        # TRL slices sequence logits and token IDs without making them contiguous.
+        # E3-RM slices sequence logits and token IDs without making them contiguous.
         logits = base_logits[:, 1:4]
         index = torch.randint(vocab_size, (2, 5), device=torch_device)[:, 1:4]
         index[0, 0] = vocab_size - 1  # select a target from the partial block
         temperature = 0.7
-        # Slice the mask too, matching the non-contiguous views passed by TRL.
+        # Slice the mask too, matching the non-contiguous views passed by E3-RM.
         sliced_mask = torch.tensor([[1, 1, 0, 1, 1], [1, 0, 1, 1, 1]], device=torch_device, dtype=torch.bool)[:, 1:4]
         row_mask = sliced_mask if use_mask else None
 
@@ -178,7 +180,7 @@ class TestChunkedLogProbFunction:
         entropy = -(p * log_p).sum(dim=-1)
         return logprobs, entropy
 
-    # CPU tensors stand in for an accelerator without Triton (e.g. Trainium): TRL does not target CPU training
+    # CPU tensors stand in for an accelerator without Triton (e.g. Trainium): E3-RM does not target CPU training
     @pytest.mark.parametrize("device", [torch_device, "cpu"])
     @pytest.mark.parametrize("temperature", [1.0, 0.7])
     def test_forward(self, device, temperature):
@@ -194,8 +196,8 @@ class TestChunkedLogProbFunction:
             return torch_mm(input, mat2, out=out)
 
         with (
-            patch("trl.kernels.chunked_logprob.TOKEN_CHUNK_SIZE", 17),
-            patch("trl.kernels.chunked_logprob.torch.mm", side_effect=record_chunk),
+            patch("e3_rm.kernels.chunked_logprob.TOKEN_CHUNK_SIZE", 17),
+            patch("e3_rm.kernels.chunked_logprob.torch.mm", side_effect=record_chunk),
         ):
             logprobs_chunked, entropy_chunked, *_ = ChunkedLogProbFunction.apply(
                 hidden, weight, None, labels, temperature, self.CHUNK_SIZE
@@ -299,7 +301,7 @@ class TestChunkedLogProbFunction:
 
         torch.testing.assert_close(is_top1, argmax == labels)
 
-    # CPU tensors stand in for an accelerator without Triton (e.g. Trainium): TRL does not target CPU training
+    # CPU tensors stand in for an accelerator without Triton (e.g. Trainium): E3-RM does not target CPU training
     @pytest.mark.parametrize("device", [torch_device, "cpu"])
     @pytest.mark.parametrize(
         ("logit_scale", "final_logit_softcapping"),
@@ -325,7 +327,7 @@ class TestChunkedLogProbFunction:
         torch.testing.assert_close(logprobs, logprobs_ref, atol=1e-5, rtol=1e-5)
         torch.testing.assert_close(entropy, entropy_ref, atol=1e-5, rtol=1e-5)
 
-    # CPU tensors stand in for an accelerator without Triton (e.g. Trainium): TRL does not target CPU training
+    # CPU tensors stand in for an accelerator without Triton (e.g. Trainium): E3-RM does not target CPU training
     @pytest.mark.parametrize("device", [torch_device, "cpu"])
     @pytest.mark.parametrize("temperature", [1.0, 0.7])
     def test_backward(self, device, temperature):
@@ -558,7 +560,7 @@ class TestChunkedLogProbFunction:
         labels = torch.randint(0, self.V, (self.N,), device=torch_device)
 
         # Chunked backward
-        with patch("trl.kernels.chunked_logprob.TOKEN_CHUNK_SIZE", 17):
+        with patch("e3_rm.kernels.chunked_logprob.TOKEN_CHUNK_SIZE", 17):
             logprobs_chunked, entropy_chunked, *_ = ChunkedLogProbFunction.apply(
                 hidden, weight, None, labels, temperature, self.CHUNK_SIZE
             )
@@ -682,7 +684,7 @@ class TestChunkedDivergenceFunction:
 class TestHeadLossNumerics:
     @pytest.mark.parametrize("device", ["cpu", torch_device])
     def test_confident_target_across_triton_blocks(self, device):
-        from trl.kernels.chunked_logprob import ChunkedLogProbFunction
+        from e3_rm.kernels.chunked_logprob import ChunkedLogProbFunction
 
         targets = torch.tensor([0, 1024, 2052], device=device)
         hidden = torch.eye(3, device=device, requires_grad=True)
@@ -707,7 +709,7 @@ class TestHeadLossNumerics:
     @pytest.mark.parametrize("use_support", [False, True])
     def test_confident_target(self, device, chunk_size, use_support, dtype):
         # The target can occur before or after the other logits in the streaming reduction.
-        from trl.kernels.chunked_logprob import ChunkedLogProbFunction
+        from e3_rm.kernels.chunked_logprob import ChunkedLogProbFunction
 
         hidden = torch.eye(3, device=device, dtype=dtype, requires_grad=True)
         weight = torch.tensor(
@@ -741,13 +743,13 @@ class TestHeadLossNumerics:
     @pytest.mark.parametrize("beta", [0.0, 0.7, 1.0])
     @pytest.mark.parametrize("perturbation", [0.0, 1e-7])
     def test_near_teacher(self, device, beta, perturbation, chunk_size):
-        from trl.kernels.chunked_divergence import ChunkedDivergenceFunction
+        from e3_rm.kernels.chunked_divergence import ChunkedDivergenceFunction
 
         hidden = torch.eye(2, device=device, requires_grad=True)
         teacher = torch.tensor([[2.0, 1.0, 0.0], [2.0, 0.01, 0.0]], device=device).t()
         delta = torch.tensor([[-perturbation, perturbation, 0.0], [0.0, perturbation / 10, 0.0]], device=device).t()
         student = (teacher + delta).requires_grad_()
-        with patch("trl.kernels.chunked_divergence.VOCAB_CHUNK_SIZE", chunk_size):
+        with patch("e3_rm.kernels.chunked_divergence.VOCAB_CHUNK_SIZE", chunk_size):
             divergence, _ = ChunkedDivergenceFunction.apply(
                 hidden, student, None, hidden.detach(), teacher, None, beta
             )
@@ -772,7 +774,7 @@ class TestHeadLossNumerics:
     @pytest.mark.parametrize("device", ["cpu", torch_device])
     @pytest.mark.parametrize("beta", [0.0, 0.7, 1.0])
     def test_concentrated_teacher(self, device, beta, chunk_size):
-        from trl.kernels.chunked_divergence import ChunkedDivergenceFunction
+        from e3_rm.kernels.chunked_divergence import ChunkedDivergenceFunction
 
         hidden = torch.eye(3, device=device)
         student = (
@@ -781,7 +783,7 @@ class TestHeadLossNumerics:
             .requires_grad_()
         )
         teacher = torch.tensor([[40.0, -40.0, -40.0], [-9.0, 9.0, -9.0], [-20.0, 20.0, -20.0]], device=device).t()
-        with patch("trl.kernels.chunked_divergence.VOCAB_CHUNK_SIZE", chunk_size):
+        with patch("e3_rm.kernels.chunked_divergence.VOCAB_CHUNK_SIZE", chunk_size):
             divergence, _ = ChunkedDivergenceFunction.apply(hidden, student, None, hidden, teacher, None, beta)
             divergence.sum().backward()
         # Use the paper's normalization even for the float64 reference.
@@ -805,13 +807,13 @@ class TestHeadLossNumerics:
     @pytest.mark.parametrize("chunk_size", [2, 4])
     @pytest.mark.parametrize("beta", [0.0, 0.7, 1.0])
     def test_independent_logit_shifts(self, device, chunk_size, beta):
-        from trl.kernels.chunked_divergence import ChunkedDivergenceFunction
+        from e3_rm.kernels.chunked_divergence import ChunkedDivergenceFunction
 
         epsilon = 2**-20
         hidden = torch.eye(2, device=device)
         student = torch.tensor([[32.0, -epsilon], [32.0, 0.0], [32.0, epsilon]], device=device, requires_grad=True)
         teacher = torch.tensor([[-epsilon, 32.0], [0.0, 32.0], [epsilon, 32.0]], device=device)
-        with patch("trl.kernels.chunked_divergence.VOCAB_CHUNK_SIZE", chunk_size):
+        with patch("e3_rm.kernels.chunked_divergence.VOCAB_CHUNK_SIZE", chunk_size):
             loss, _ = ChunkedDivergenceFunction.apply(hidden, student, None, hidden, teacher, None, beta)
             loss.sum().backward()
         logits = student.detach().double().t().requires_grad_()
@@ -831,12 +833,12 @@ class TestHeadLossNumerics:
     @pytest.mark.parametrize("chunk_size", [1, 2])
     @pytest.mark.parametrize("beta", [1e-6, 1 - 1e-6])
     def test_jsd_near_endpoint(self, device, chunk_size, beta):
-        from trl.kernels.chunked_divergence import ChunkedDivergenceFunction
+        from e3_rm.kernels.chunked_divergence import ChunkedDivergenceFunction
 
         hidden = torch.ones(1, 1, device=device)
         student = torch.tensor([[-40.0], [40.0]], device=device, requires_grad=True)
         teacher = -student.detach()
-        with patch("trl.kernels.chunked_divergence.VOCAB_CHUNK_SIZE", chunk_size):
+        with patch("e3_rm.kernels.chunked_divergence.VOCAB_CHUNK_SIZE", chunk_size):
             loss, _ = ChunkedDivergenceFunction.apply(hidden, student, None, hidden, teacher, None, beta)
             loss.sum().backward()
         # Disjoint distributions approach the binary entropy of the mixture weight.

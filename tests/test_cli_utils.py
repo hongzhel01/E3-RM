@@ -1,4 +1,6 @@
 # Copyright 2020-2026 The HuggingFace Team. All rights reserved.
+# Modified for E3-RM: namespace migration and maintenance comments (2026-10-28).
+# 验证迁移后公开行为；外部 tiny 模型与数据集 ID 保持真实来源。
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,21 +21,21 @@ from dataclasses import dataclass
 import pytest
 from datasets import DatasetDict, load_dataset
 
-from trl import (
+from e3_rm import (
     DatasetMixtureConfig,
     DistillationConfig,
     DPOConfig,
+    E3RMParser,
     GRPOConfig,
     KTOConfig,
     RewardConfig,
     RLOOConfig,
     SFTConfig,
-    TrlParser,
     get_dataset,
 )
-from trl.scripts.utils import DatasetConfig
+from e3_rm.scripts.utils import DatasetConfig
 
-from .testing_utils import TrlTestCase
+from .testing_utils import E3RMTestCase
 
 
 @dataclass
@@ -44,10 +46,10 @@ class MyDataclass:
 
 @dataclass
 class InvalidDataclass:
-    config: str  # This should raise an error in the TrlParser
+    config: str  # This should raise an error in the E3RMParser
 
 
-class TestTrlParser(TrlTestCase):
+class TestE3RMParser(E3RMTestCase):
     def write_config(self, content):
         config_path = os.path.join(self.tmp_dir, "config.yaml")
         with open(config_path, "w", encoding="utf-8") as config_file:
@@ -66,7 +68,7 @@ class TestTrlParser(TrlTestCase):
     )
     def test_dict_field_from_command_line(self, config_cls, field_name, value, expected):
         """Dict-typed fields are passed as JSON on the command line and decoded into dicts."""
-        parser = TrlParser(dataclass_types=[config_cls])
+        parser = E3RMParser(dataclass_types=[config_cls])
         (config,) = parser.parse_args_into_dataclasses(["--output_dir", "dummy", f"--{field_name}", value])
         assert getattr(config, field_name) == expected
 
@@ -78,19 +80,19 @@ class TestTrlParser(TrlTestCase):
     )
     def test_pad_to_multiple_of_from_command_line(self, config_cls, value, expected):
         """`pad_to_multiple_of` arrives as a string on the command line; `"auto"` resolves to `None` off Neuron."""
-        parser = TrlParser(dataclass_types=[config_cls])
+        parser = E3RMParser(dataclass_types=[config_cls])
         (config,) = parser.parse_args_into_dataclasses(["--output_dir", "dummy", "--pad_to_multiple_of", value])
         assert config.pad_to_multiple_of == expected
 
     def test_init_without_config_field(self):
         """Test initialization without 'config' field in the dataclasses."""
-        parser = TrlParser(dataclass_types=[MyDataclass])
-        assert isinstance(parser, TrlParser)
+        parser = E3RMParser(dataclass_types=[MyDataclass])
+        assert isinstance(parser, E3RMParser)
 
     def test_init_with_config_field(self):
         """Test initialization with a 'config' field in the dataclass (should raise ValueError)."""
         with pytest.raises(ValueError, match="has a field named 'config'"):
-            TrlParser(dataclass_types=[InvalidDataclass])
+            E3RMParser(dataclass_types=[InvalidDataclass])
 
     def test_parse_args_and_config_with_valid_config(self, monkeypatch):
         """Test parse_args_and_config method with valid arguments and config."""
@@ -99,7 +101,7 @@ class TestTrlParser(TrlTestCase):
         monkeypatch.setenv("VAR2", "")
         config_path = self.write_config("env:\n  VAR1: value1\n  VAR2: value2\narg1: 2")
 
-        parser = TrlParser(dataclass_types=[MyDataclass])
+        parser = E3RMParser(dataclass_types=[MyDataclass])
 
         args = ["--arg2", "value", "--config", config_path]  # don't set arg1 to test default value
 
@@ -119,7 +121,7 @@ class TestTrlParser(TrlTestCase):
         """Test parse_args_and_config method and check that arguments override the config."""
         config_path = self.write_config("arg1: 2")
 
-        parser = TrlParser(dataclass_types=[MyDataclass])
+        parser = E3RMParser(dataclass_types=[MyDataclass])
 
         args = ["--arg1", "3", "--config", config_path]  # override arg1 default with 3
 
@@ -135,7 +137,7 @@ class TestTrlParser(TrlTestCase):
         """Test parse_args_and_config method when the 'env' field is not a dictionary."""
         config_path = self.write_config("env: not_a_dict")
 
-        parser = TrlParser(dataclass_types=[MyDataclass])
+        parser = E3RMParser(dataclass_types=[MyDataclass])
 
         args = ["--arg1", "2", "--arg2", "value", "--config", config_path]
 
@@ -145,14 +147,14 @@ class TestTrlParser(TrlTestCase):
     @pytest.mark.parametrize("config", ["", "[]", "value", "42"])
     def test_parse_args_and_config_with_non_mapping_config(self, config):
         config_path = self.write_config(config)
-        parser = TrlParser(dataclass_types=[MyDataclass])
+        parser = E3RMParser(dataclass_types=[MyDataclass])
 
         with pytest.raises(ValueError, match="must contain a YAML mapping"):
             parser.parse_args_and_config(["--config", config_path])
 
     def test_parse_args_and_config_without_config(self):
         """Test parse_args_and_config without the `--config` argument."""
-        parser = TrlParser(dataclass_types=[MyDataclass])
+        parser = E3RMParser(dataclass_types=[MyDataclass])
 
         args = ["--arg1", "2", "--arg2", "value"]
 
@@ -167,7 +169,7 @@ class TestTrlParser(TrlTestCase):
 
     def test_set_defaults_with_config(self):
         """Test set_defaults_with_config updates the defaults."""
-        parser = TrlParser(dataclass_types=[MyDataclass])
+        parser = E3RMParser(dataclass_types=[MyDataclass])
 
         # Update defaults
         parser.set_defaults_with_config(arg1=42)
@@ -179,7 +181,7 @@ class TestTrlParser(TrlTestCase):
         assert result_args[0].arg1 == 42
 
     def test_parse_args_and_config_with_remaining_strings(self):
-        parser = TrlParser(dataclass_types=[MyDataclass])
+        parser = E3RMParser(dataclass_types=[MyDataclass])
 
         args = ["--arg1", "2", "--arg2", "value", "remaining"]
 
@@ -196,7 +198,7 @@ class TestTrlParser(TrlTestCase):
     def test_parse_args_and_config_with_remaining_strings_in_config_and_args(self):
         config_path = self.write_config("remaining_string_in_config: abc")
 
-        parser = TrlParser(dataclass_types=[MyDataclass])
+        parser = E3RMParser(dataclass_types=[MyDataclass])
 
         args = ["--arg1", "2", "--remaining_string_in_args", "def", "--config", config_path]
 
@@ -214,10 +216,10 @@ class TestTrlParser(TrlTestCase):
         config_path = self.write_config("arg1: 2\narg2: config_value")
 
         # Create the main parser
-        parser = TrlParser()
+        parser = E3RMParser()
 
         # Add subparsers
-        subparsers = parser.add_subparsers(dest="command", parser_class=TrlParser)
+        subparsers = parser.add_subparsers(dest="command", parser_class=E3RMParser)
 
         # Create a subparser for a specific command
         subparsers.add_parser("subcommand", dataclass_types=[MyDataclass])
@@ -238,10 +240,10 @@ class TestTrlParser(TrlTestCase):
         config_path = self.write_config("arg1: 2\narg2: config_value")
 
         # Create the main parser
-        parser = TrlParser()
+        parser = E3RMParser()
 
         # Add subparsers
-        subparsers = parser.add_subparsers(dest="command", parser_class=TrlParser)
+        subparsers = parser.add_subparsers(dest="command", parser_class=E3RMParser)
 
         # Create a subparser for a specific command
         subparsers.add_parser("subcommand", dataclass_types=[MyDataclass])
@@ -259,10 +261,10 @@ class TestTrlParser(TrlTestCase):
         config_path = self.write_config("arg1: 2\nthis_arg_does_not_exist: config_value")
 
         # Create the main parser
-        parser = TrlParser()
+        parser = E3RMParser()
 
         # Add subparsers
-        subparsers = parser.add_subparsers(dest="command", parser_class=TrlParser)
+        subparsers = parser.add_subparsers(dest="command", parser_class=E3RMParser)
 
         # Create a subparser for a specific command
         subparsers.add_parser("subcommand", dataclass_types=[MyDataclass])
@@ -279,10 +281,10 @@ class TestTrlParser(TrlTestCase):
         config_path = self.write_config("arg1: 2\narg2: config_value")
 
         # Create the main parser
-        parser = TrlParser()
+        parser = E3RMParser()
 
         # Add subparsers
-        subparsers = parser.add_subparsers(dest="command", parser_class=TrlParser)
+        subparsers = parser.add_subparsers(dest="command", parser_class=E3RMParser)
 
         # Create a subparser for a specific command
         subparsers.add_parser("subcommand0", dataclass_types=[MyDataclass])
@@ -432,7 +434,7 @@ class TestGetDataset:
         assert "train" in result
         assert len(result["train"]) > 0
 
-    def test_trlparser_parses_yaml_config_correctly(self):
+    def test_e3rm_parser_parses_yaml_config_correctly(self):
         # Prepare YAML content exactly like your example
         # docstyle-ignore
         yaml_content = """
@@ -449,7 +451,7 @@ class TestGetDataset:
         with tempfile.NamedTemporaryFile("w+", suffix=".yaml", encoding="utf-8") as tmpfile:
             tmpfile.write(yaml_content)
             tmpfile.flush()
-            parser = TrlParser((DatasetMixtureConfig,))
+            parser = E3RMParser((DatasetMixtureConfig,))
             args = parser.parse_args_and_config(args=["--config", tmpfile.name])[0]
 
         # Assert that we got DatasetMixtureConfig instance
@@ -472,7 +474,7 @@ class TestGetDataset:
         assert dataset_config2.name == "standard_preference"
         assert dataset_config2.columns == ["prompt"]  # Columns specified
 
-    def test_trlparser_parses_yaml_and_loads_dataset(self):
+    def test_e3rm_parser_parses_yaml_and_loads_dataset(self):
         # Prepare YAML content exactly like your example
         # docstyle-ignore
         yaml_content = """
@@ -485,7 +487,7 @@ class TestGetDataset:
         with tempfile.NamedTemporaryFile("w+", suffix=".yaml", encoding="utf-8") as tmpfile:
             tmpfile.write(yaml_content)
             tmpfile.flush()
-            parser = TrlParser((DatasetMixtureConfig,))
+            parser = E3RMParser((DatasetMixtureConfig,))
             args = parser.parse_args_and_config(args=["--config", tmpfile.name])[0]
 
         # Load the dataset using get_dataset

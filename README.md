@@ -1,234 +1,215 @@
-# TRL - Transformers Reinforcement Learning
+# E3-RM
 
-<div style="text-align: center">
-    <picture>
-        <source media="(prefers-color-scheme: light)" srcset="https://huggingface.co/datasets/trl-lib/documentation-images/resolve/main/trl_banner_light.png">
-        <img src="https://huggingface.co/datasets/trl-lib/documentation-images/resolve/main/trl_banner_dark.png" alt="TRL Banner">
-    </picture>
-</div>
+渐进式语义鲁棒奖励建模研究项目。Python 包为 `e3_rm`，安装包与命令为 `e3-rm`。
 
-<hr> <br>
+当前保留 Reward、SFT、DPO、KTO、GRPO、RLOO 和蒸馏训练器。E3 专属的语义不变性、偏好差值一致性、语义敏感性损失与渐进调度仍在设计阶段，尚无正式 7B/14B 实验结果。
 
-<h3 align="center">
-    <p>A comprehensive library to post-train foundation models</p>
-</h3>
+## 1. 安装与环境检查
 
-<p align="center">
-    <a href="https://github.com/huggingface/trl/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/huggingface/trl.svg?color=blue"></a>
-    <a href="https://huggingface.co/docs/trl/index"><img alt="Documentation" src="https://img.shields.io/website?label=documentation&url=https%3A%2F%2Fhuggingface.co%2Fdocs%2Ftrl%2Findex&down_color=red&down_message=offline&up_color=blue&up_message=online"></a>
-    <a href="https://github.com/huggingface/trl/releases"><img alt="GitHub release" src="https://img.shields.io/github/release/huggingface/trl.svg"></a>
-    <a href="https://huggingface.co/trl-lib"><img alt="Hugging Face Hub" src="https://img.shields.io/badge/🤗%20Hub-trl--lib-yellow"></a>
-</p>
-
-## 🎉 What's New
-
-**🚀 Training on AMD GPUs:** TRL's trainers now run on [AMD Instinct GPUs](https://huggingface.co/docs/trl/amd_gpus) through PyTorch's ROCm build.
-
-**🔥 Beam:** Fine-tune [Beam](https://huggingface.co/reflection/Beam-1.0-501B-A23B) with [`SFTTrainer`](https://huggingface.co/docs/trl/sft_trainer) on a single node of 8 B300s. See the [LoRA example](https://github.com/huggingface/trl/tree/main/examples/sft_beam).
-
-**🔥 Muse Spark Open:** Fine-tune [Muse Spark Open](https://huggingface.co/meta-models/Muse-Spark-Open-816B-A42B) with [`SFTTrainer`](https://huggingface.co/docs/trl/sft_trainer), sharded across your GPUs at load time. See the [8-node LoRA example](https://github.com/huggingface/trl/tree/main/examples/sft_muse_spark_open).
-
-**🚀 Training on AWS Trainium:** TRL's trainers now run on [AWS Trainium](https://huggingface.co/docs/trl/aws_trainium) through TorchNeuron, PyTorch's native Neuron backend.
-
-## Overview
-
-TRL is a cutting-edge library designed for post-training foundation models using advanced techniques like Supervised Fine-Tuning (SFT), Group Relative Policy Optimization (GRPO), and Direct Preference Optimization (DPO). Built on top of the [🤗 Transformers](https://github.com/huggingface/transformers) ecosystem, TRL supports a variety of model architectures and modalities, and can be scaled-up across various hardware setups.
-
-## Highlights
-
-- **Trainers**: Various fine-tuning methods are easily accessible via trainers like [`SFTTrainer`](https://huggingface.co/docs/trl/sft_trainer), [`GRPOTrainer`](https://huggingface.co/docs/trl/grpo_trainer), [`DPOTrainer`](https://huggingface.co/docs/trl/dpo_trainer), [`KTOTrainer`](https://huggingface.co/docs/trl/kto_trainer) and more.
-
-- **Efficient and scalable**:
-  - Leverages [🤗 Accelerate](https://github.com/huggingface/accelerate) to scale from single GPU to multi-node clusters using methods like [DDP](https://pytorch.org/tutorials/intermediate/ddp_tutorial.html) and [DeepSpeed](https://github.com/deepspeedai/DeepSpeed).
-  - Full integration with [🤗 PEFT](https://github.com/huggingface/peft) enables training on large models with modest hardware via quantization and LoRA/QLoRA.
-  - Integrates [🦥 Unsloth](https://github.com/unslothai/unsloth) for accelerating training using optimized kernels.
-
-- **Command Line Interface (CLI)**: A simple interface lets you fine-tune with models without needing to write code.
-
-## Installation
-
-### Python Package
-
-Install the library using `pip`:
+要求 Python 3.11+；具体依赖见 [pyproject.toml](pyproject.toml)。在项目根目录执行：
 
 ```bash
-pip install trl
+python -m venv .venv
 ```
 
-### From source
+Windows PowerShell 激活环境：
 
-If you want to use the latest features before an official release, you can install TRL from source:
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+Linux/macOS 激活环境：
 
 ```bash
-pip install git+https://github.com/huggingface/trl.git
+source .venv/bin/activate
 ```
 
-### Repository
-
-If you want to use the examples you can clone the repository with the following command:
+安装本地源码并检查命令：
 
 ```bash
-git clone https://github.com/huggingface/trl.git
+python -m pip install --upgrade pip
+python -m pip install -e .
+e3-rm --help
+e3-rm reward --help
+e3-rm env
 ```
 
-## Quick Start
+GPU 训练需使用与驱动匹配的 PyTorch；DeepSpeed、vLLM 和量化各有硬件及系统要求。下面的首次运行示例显式使用 CPU，避免默认 BF16 参数与设备不匹配。模型仍需下载，也可将模型名称替换为已有本地模型目录。
 
-For more flexibility and control over training, TRL provides dedicated trainer classes to post-train language models or PEFT adapters on a custom dataset. Each trainer in TRL is a light wrapper around the 🤗 Transformers trainer and natively supports distributed training methods like DDP, DeepSpeed ZeRO, and FSDP.
+## 2. 准备本地偏好数据
 
-### `SFTTrainer`
+在根目录新建 `data/`，将每行一个 JSON 对象的数据保存为 `data/train.jsonl`：
 
-Here is a basic example of how to use the [`SFTTrainer`](https://huggingface.co/docs/trl/sft_trainer):
+```jsonl
+{"prompt":"1+1 等于多少？ ","chosen":"2。","rejected":"3。"}
+{"prompt":"水的化学式是什么？ ","chosen":"H2O。","rejected":"CO2。"}
+{"prompt":"请用中文问好。 ","chosen":"你好！","rejected":"Goodbye!"}
+```
+
+每个样本必须有同一问题对应的 `chosen` 和 `rejected`。也支持消息列表格式，但要配合模型的聊天模板。以上三行只用于验证流程，不能用于评估模型质量。正式实验应先固定训练/验证/测试划分，再生成 E3 变体。
+
+## 3. 用配置启动奖励模型基线
+
+新建 `configs/reward.yaml`：
+
+```yaml
+model_name_or_path: Qwen/Qwen2.5-0.5B-Instruct
+output_dir: outputs/reward-model
+
+datasets:
+  - path: json
+    data_files: data/train.jsonl
+    split: train
+
+use_cpu: true
+bf16: false
+fp16: false
+per_device_train_batch_size: 1
+gradient_accumulation_steps: 4
+learning_rate: 0.00001
+num_train_epochs: 1
+max_length: 512
+seed: 42
+logging_steps: 1
+eval_strategy: "no"
+save_strategy: epoch
+save_total_limit: 2
+report_to: none
+push_to_hub: false
+```
+
+在项目根目录运行：
+
+```bash
+e3-rm reward --config configs/reward.yaml
+```
+
+该配置只训练，不自动创建验证集。`max_length` 会过滤任一回答超长的整对样本，应检查剩余数据量。输出目录中保存模型、分词器、模型卡和实际生成的 checkpoint。
+
+GPU 运行时将 `use_cpu` 改为 `false`，按设备支持设置 `bf16` / `fp16`，再调整批大小与梯度累积。正式 7B 模型建议先验证 LoRA/QLoRA 和资源需求，不能直接照搬小模型全参数配置。
+
+若需要独立验证集，可用 Python API 显式传入已划分数据：
 
 ```python
-from trl import SFTTrainer
 from datasets import load_dataset
+from e3_rm import RewardConfig, RewardTrainer
 
-dataset = load_dataset("trl-lib/Capybara", split="train")
-
-trainer = SFTTrainer(
-    model="Qwen/Qwen2.5-0.5B",
-    train_dataset=dataset,
+# 两个文件应在生成任何变体之前划分，并保证同源样本不跨集合。
+parts = load_dataset("json", data_files={
+    "train": "data/train.jsonl",
+    "validation": "data/validation.jsonl",
+})
+args = RewardConfig(
+    output_dir="outputs/reward-model",
+    use_cpu=True, bf16=False, fp16=False,
+    per_device_train_batch_size=1,
+    per_device_eval_batch_size=1,
+    num_train_epochs=1,
+    max_length=512,
+    eval_strategy="epoch",
+    report_to="none",
 )
-trainer.train()
-```
-
-### `GRPOTrainer`
-
-[`GRPOTrainer`](https://huggingface.co/docs/trl/grpo_trainer) implements the [Group Relative Policy Optimization (GRPO) algorithm](https://huggingface.co/papers/2402.03300) that is more memory-efficient than PPO and was used to train [Deepseek AI's R1](https://huggingface.co/deepseek-ai/DeepSeek-R1). `accuracy_reward` needs math-verify, which you can install with `pip install trl[math_verify]`.
-
-```python
-from datasets import load_dataset
-from trl import GRPOTrainer
-from trl.rewards import accuracy_reward
-
-dataset = load_dataset("trl-lib/DeepMath-103K", split="train")
-
-trainer = GRPOTrainer(
-    model="Qwen/Qwen2.5-0.5B-Instruct",
-    reward_funcs=accuracy_reward,
-    train_dataset=dataset,
-)
-trainer.train()
-```
-
-> [!NOTE]
-> For reasoning models, use the `reasoning_accuracy_reward()` function for better results.
-
-### `DPOTrainer`
-
-[`DPOTrainer`](https://huggingface.co/docs/trl/dpo_trainer) implements the popular [Direct Preference Optimization (DPO) algorithm](https://huggingface.co/papers/2305.18290) that was used to post-train [Llama 3](https://huggingface.co/papers/2407.21783) and many other models. Here is a basic example of how to use the `DPOTrainer`:
-
-```python
-from datasets import load_dataset
-from trl import DPOTrainer
-
-dataset = load_dataset("trl-lib/ultrafeedback_binarized", split="train")
-
-trainer = DPOTrainer(
-    model="Qwen/Qwen3-0.6B",
-    train_dataset=dataset,
-)
-trainer.train()
-```
-
-### `KTOTrainer`
-
-[`KTOTrainer`](https://huggingface.co/docs/trl/kto_trainer) implements the [Kahneman-Tversky Optimization (KTO) algorithm](https://huggingface.co/papers/2402.01306), which aligns models from simple binary (desirable / undesirable) feedback rather than paired preferences. Here is a basic example of how to use the `KTOTrainer`:
-
-```python
-from datasets import load_dataset
-from trl import KTOTrainer
-
-dataset = load_dataset("trl-lib/kto-mix-14k", split="train")
-
-trainer = KTOTrainer(
-    model="Qwen/Qwen3-0.6B",
-    train_dataset=dataset,
-)
-trainer.train()
-```
-
-### `RewardTrainer`
-
-Here is a basic example of how to use the [`RewardTrainer`](https://huggingface.co/docs/trl/reward_trainer):
-
-```python
-from trl import RewardTrainer
-from datasets import load_dataset
-
-dataset = load_dataset("trl-lib/ultrafeedback_binarized", split="train")
-
 trainer = RewardTrainer(
     model="Qwen/Qwen2.5-0.5B-Instruct",
-    train_dataset=dataset,
+    args=args,
+    train_dataset=parts["train"],
+    eval_dataset=parts["validation"],
 )
 trainer.train()
+trainer.save_model(args.output_dir)
+trainer.processing_class.save_pretrained(args.output_dir)
 ```
 
-## Command Line Interface (CLI)
+## 4. 使用保存的模型评分
 
-You can use the TRL Command Line Interface (CLI) to quickly get started with post-training methods like Supervised Fine-Tuning (SFT) or Direct Preference Optimization (DPO):
-
-**SFT:**
-
-```bash
-trl sft --model_name_or_path Qwen/Qwen2.5-0.5B \
-    --dataset_name trl-lib/Capybara \
-    --output_dir Qwen2.5-0.5B-SFT
-```
-
-**DPO:**
-
-```bash
-trl dpo --model_name_or_path Qwen/Qwen2.5-0.5B-Instruct \
-    --dataset_name argilla/Capybara-Preferences \
-    --output_dir Qwen2.5-0.5B-DPO
-```
-
-**KTO:**
-
-```bash
-trl kto --model_name_or_path Qwen/Qwen2.5-0.5B-Instruct \
-    --dataset_name trl-lib/kto-mix-14k \
-    --output_dir Qwen2.5-0.5B-KTO
-```
-
-Read more about CLI in the [relevant documentation section](https://huggingface.co/docs/trl/clis) or use `--help` for more details.
-
-## Development
-
-If you want to contribute to `trl` or customize it to your needs make sure to read the [contribution guide](https://github.com/huggingface/trl/blob/main/CONTRIBUTING.md) and make sure you make a dev install:
-
-```bash
-git clone https://github.com/huggingface/trl.git
-cd trl/
-pip install -e .[dev]
-```
-
-## Experimental
-
-A minimal incubation area is available under `trl.experimental` for unstable / fast-evolving features. Anything there may change or be removed in any release without notice.
-
-Example:
+以下示例对应普通文本偏好数据，采用与训练一致的“问题 + 回答 + EOS”格式：
 
 ```python
-from trl.experimental.new_trainer import NewTrainer
+import torch
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
+
+model_dir = "outputs/reward-model"
+tokenizer = AutoTokenizer.from_pretrained(model_dir)
+model = AutoModelForSequenceClassification.from_pretrained(model_dir).eval()
+
+prompt = "1+1 等于多少？ "
+answers = ["2。", "3。"]
+texts = [prompt + answer + tokenizer.eos_token for answer in answers]
+inputs = tokenizer(texts, padding=True, truncation=True,
+                   max_length=512, return_tensors="pt")
+with torch.no_grad():
+    scores = model(**inputs).logits.squeeze(-1).tolist()
+for answer, score in zip(answers, scores):
+    print(answer, score)
 ```
 
-Read more in the [Experimental docs](https://huggingface.co/docs/trl/experimental_overview).
+分数表达模型学到的相对偏好，不是正确率或固定概率。训练使用对话消息时，评分也要使用相同聊天模板，而不是直接拼接文本。不要跨不同模型直接比较绝对分数。
 
-## Citation
+## 5. LoRA、恢复与分布式运行
 
-```bibtex
-@software{vonwerra2020trl,
-  title   = {{TRL: Transformers Reinforcement Learning}},
-  author  = {von Werra, Leandro and Belkada, Younes and Tunstall, Lewis and Beeching, Edward and Thrush, Tristan and Lambert, Nathan and Huang, Shengyi and Rasul, Kashif and Gallouédec, Quentin},
-  license = {Apache-2.0},
-  url     = {https://github.com/huggingface/trl},
-  year    = {2020}
-}
+按需安装：
+
+```bash
+python -m pip install -e ".[peft]"
+# QLoRA 还需要兼容环境中的量化支持
+python -m pip install -e ".[peft,quantization]"
 ```
 
-## License
+奖励模型 LoRA 可在配置中增加：
 
-This repository's source code is available under the [Apache-2.0 License](LICENSE).
+```yaml
+use_peft: true
+lora_task_type: SEQ_CLS
+lora_r: 8
+lora_alpha: 16
+lora_target_modules: all-linear
+lora_modules_to_save:
+  - score
+```
+
+`score` 是奖励评分头，应参与训练并随适配器保存。LoRA 输出是 adapter，可用 `peft.AutoPeftModelForSequenceClassification.from_pretrained(...)` 重载；不能将 adapter 目录当作完整基座权重。QLoRA 还需配置量化与兼容精度，详见[开发说明](docs/开发与迁移.md)。
+
+从已有 checkpoint 恢复时附加路径，例如：
+
+```bash
+e3-rm reward --config configs/reward.yaml --resume_from_checkpoint outputs/reward-model/checkpoint-1
+```
+
+编号必须替换为实际存在的检查点。最终导出的模型目录和完整训练 checkpoint 用途不同，恢复训练不能只依赖模型权重。
+
+分布式参数可通过 `--accelerate_config` 指定自定义 YAML 或包内配置名，例如 `multi_gpu`、`zero2`、`fsdp2`。这些配置的进程数、精度和机器数量需要按实际硬件调整，不能与上面的 CPU 示例直接混用。
+
+## 6. 其他方法与检查
+
+| 方法 | Python 类 | 查看用法 |
+| --- | --- | --- |
+| Reward | `RewardTrainer` | `e3-rm reward --help` |
+| SFT | `SFTTrainer` | `e3-rm sft --help` |
+| DPO | `DPOTrainer` | `e3-rm dpo --help` |
+| KTO | `KTOTrainer` | `e3-rm kto --help` |
+| GRPO | `GRPOTrainer` | `e3-rm grpo --help` |
+| RLOO | `RLOOTrainer` | `e3-rm rloo --help` |
+| 蒸馏 | `DistillationTrainer` | `e3-rm distillation --help` |
+
+各方法的数据格式与奖励/教师要求不同，不能仅替换类名复用奖励模型配置。另有 `e3-rm vllm-serve --help`。
+
+```bash
+python -m pip install -e ".[test,peft]"
+# 不下载模型的本地 tiny 模型集成测试
+python -m pytest tests/test_local_training.py -q
+
+python -m pip install ruff build
+ruff check e3_rm tests
+python -m build
+```
+
+完整测试可能需要联网、GPU 或可选依赖。此前迁移的 79 项针对性检查通过；具体范围及未通过项见[整理记录](docs/整理记录.md)，不把历史结果当作本轮重新运行的结果。
+
+## 项目文档与授权
+
+- [项目结构](docs/项目结构.md)：目录职责、CLI 到训练器的调用链、关键代码入口。
+- [设计与实验](docs/设计与实验.md)：尚待实现的 E3 目标、损失、数据与评估计划。
+- [开发说明](docs/开发与迁移.md)：配置、注释规范、兼容性与检查方法。
+- [整理记录](docs/整理记录.md)：精简结论和验证记录。
+
+项目使用独立的 E3-RM 名称，继承代码来自 [Hugging Face TRL](https://github.com/huggingface/trl)，原始版权声明继续保留。许可证正文已集中到 [e3_rm/licenses/Apache-2.0.txt](e3_rm/licenses/Apache-2.0.txt)，并随安装包分发。外部模型/数据集 ID 和必要来源链接保留真实名称。

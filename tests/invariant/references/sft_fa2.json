@@ -22,7 +22,7 @@
     "accelerate": "1.14.0",
     "torch": "2.13.0+cu130",
     "transformers": "5.19.0.dev0",
-    "trl": "77b90100113ca196ae6291552ff9b6d6c3adc277",
+    "e3_rm": "77b90100113ca196ae6291552ff9b6d6c3adc277",
     "python": "3.13.13",
     "gpu": "NVIDIA H100 80GB HBM3"
   },

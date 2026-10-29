@@ -1,4 +1,6 @@
 # Copyright 2020-2026 The HuggingFace Team. All rights reserved.
+# Modified for E3-RM: namespace migration and maintenance comments (2026-10-28).
+# 验证迁移后公开行为；外部 tiny 模型与数据集 ID 保持真实来源。
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,17 +24,17 @@ import pytest
 from transformers import AutoModelForCausalLM, AutoProcessor, AutoTokenizer
 from transformers.testing_utils import backend_device_count, torch_device
 
-from trl.generation.vllm_client import (
+from e3_rm.generation.vllm_client import (
     _DEFAULT_GENERATION_CONCURRENCY,
     VLLMClient,
     parse_generate_logprobs,
     parse_logprobs,
 )
-from trl.generation.vllm_generation import extract_logprobs
-from trl.import_utils import is_requests_available, is_vllm_available
+from e3_rm.generation.vllm_generation import extract_logprobs
+from e3_rm.import_utils import is_requests_available, is_vllm_available
 
 from .testing_utils import (
-    TrlTestCase,
+    E3RMTestCase,
     kill_process,
     require_3_accelerators,
     require_requests,
@@ -49,8 +51,8 @@ if is_requests_available():
 if is_vllm_available():
     from vllm import LLM, SamplingParams
 
-# The `vllm serve` settings required by TRL, as documented in the vLLM integration guide.
-VLLM_SERVE_TRL_ARGS = [
+# The `vllm serve` settings required by E3-RM, as documented in the vLLM integration guide.
+VLLM_SERVE_E3_RM_ARGS = [
     "--weight-transfer-config",
     '{"backend": "nccl"}',
     "--logprobs-mode",
@@ -60,15 +62,15 @@ VLLM_SERVE_TRL_ARGS = [
 ]
 # From vLLM 0.30.0, the multimodal endpoints are only served with this flag, which earlier versions reject.
 if is_vllm_available(min_version="0.30.0"):
-    VLLM_SERVE_TRL_ARGS.append("--enable-scale-out")
+    VLLM_SERVE_E3_RM_ARGS.append("--enable-scale-out")
 
 
 @require_requests
-class TestConnectionPoolSize(TrlTestCase):
+class TestConnectionPoolSize(E3RMTestCase):
     @pytest.mark.parametrize("scheme", ["http", "https"])
     def test_pool_capacity_covers_default_concurrency(self, scheme):
         with (
-            patch("trl.generation.vllm_client.is_vllm_available", return_value=True),
+            patch("e3_rm.generation.vllm_client.is_vllm_available", return_value=True),
             patch.object(VLLMClient, "check_server"),
             patch.object(VLLMClient, "_get", return_value={"data": [{"id": "test-model"}]}),
         ):
@@ -83,32 +85,32 @@ class TestConnectionPoolSize(TrlTestCase):
 
 
 @require_requests
-class TestResetPrefixCache(TrlTestCase):
+class TestResetPrefixCache(E3RMTestCase):
     def test_empty_response_body(self):
         # Before vLLM 0.26.0 (vllm-project/vllm#46893), `/reset_prefix_cache` answers with an empty body.
         response = requests.Response()
         response.status_code = 200
         response._content = b""
         with (
-            patch("trl.generation.vllm_client.is_vllm_available", return_value=True),
+            patch("e3_rm.generation.vllm_client.is_vllm_available", return_value=True),
             patch.object(VLLMClient, "check_server"),
             patch.object(VLLMClient, "_get", return_value={"data": [{"id": "test-model"}]}),
         ):
             client = VLLMClient(host="127.0.0.1")
 
         with (
-            patch("trl.generation.vllm_client._HAS_RESET_PREFIX_CACHE_SUCCESS", False),
+            patch("e3_rm.generation.vllm_client._HAS_RESET_PREFIX_CACHE_SUCCESS", False),
             patch.object(client.session, "post", return_value=response),
         ):
             client.reset_prefix_cache()
 
 
 @require_requests
-class TestMissingServerSettings(TrlTestCase):
+class TestMissingServerSettings(E3RMTestCase):
     @staticmethod
     def make_client():
         with (
-            patch("trl.generation.vllm_client.is_vllm_available", return_value=True),
+            patch("e3_rm.generation.vllm_client.is_vllm_available", return_value=True),
             patch.object(VLLMClient, "check_server"),
             patch.object(VLLMClient, "_get", return_value={"data": [{"id": "test-model"}]}),
         ):
@@ -153,7 +155,7 @@ class TestMissingServerSettings(TrlTestCase):
                 client.image_features([[Image.new("RGB", (8, 8))]])
 
 
-class TestParseLogprobs(TrlTestCase):
+class TestParseLogprobs(E3RMTestCase):
     def test_completion_logprobs_sorted_by_probability(self):
         logprobs = {
             "tokens": ["token_id:11", "token_id:5"],
@@ -189,7 +191,7 @@ class TestParseLogprobs(TrlTestCase):
         assert parse_logprobs([None]) == (None, None)
 
 
-class TestParseGenerateLogprobs(TrlTestCase):
+class TestParseGenerateLogprobs(E3RMTestCase):
     def test_generate_logprobs_sorted_by_probability(self):
         logprobs = {
             "content": [
@@ -214,7 +216,7 @@ class TestParseGenerateLogprobs(TrlTestCase):
         assert parse_generate_logprobs([None]) == (None, None)
 
 
-class TestExtractLogprobs(TrlTestCase):
+class TestExtractLogprobs(E3RMTestCase):
     def test_extract_logprobs_sorts_by_rank_and_replaces_nan(self):
         all_outputs = [
             SimpleNamespace(
@@ -270,7 +272,7 @@ class TestExtractLogprobs(TrlTestCase):
 @require_torch_multi_accelerator
 @require_vllm
 @pytest.mark.xdist_group("vllm_server")
-class TestVLLMClientServer(TrlTestCase):
+class TestVLLMClientServer(E3RMTestCase):
     model_id = "Qwen/Qwen2.5-1.5B"
 
     @classmethod
@@ -282,7 +284,7 @@ class TestVLLMClientServer(TrlTestCase):
         env["VLLM_SERVER_DEV_MODE"] = "1"
 
         # Start the server process
-        cls.server_process = subprocess.Popen(["vllm", "serve", cls.model_id, *VLLM_SERVE_TRL_ARGS], env=env)
+        cls.server_process = subprocess.Popen(["vllm", "serve", cls.model_id, *VLLM_SERVE_E3_RM_ARGS], env=env)
 
         # Initialize the client
         cls.client = VLLMClient(connection_timeout=240, host="localhost")
@@ -514,7 +516,7 @@ class TestVLLMClientServer(TrlTestCase):
 @require_torch_multi_accelerator
 @require_vllm
 @pytest.mark.xdist_group("vllm_server")
-class TestVLLMClientServerBaseURL(TrlTestCase):
+class TestVLLMClientServerBaseURL(E3RMTestCase):
     model_id = "Qwen/Qwen2.5-1.5B"
 
     @classmethod
@@ -526,7 +528,7 @@ class TestVLLMClientServerBaseURL(TrlTestCase):
         env["VLLM_SERVER_DEV_MODE"] = "1"
 
         # Start the server process
-        cls.server_process = subprocess.Popen(["vllm", "serve", cls.model_id, *VLLM_SERVE_TRL_ARGS], env=env)
+        cls.server_process = subprocess.Popen(["vllm", "serve", cls.model_id, *VLLM_SERVE_E3_RM_ARGS], env=env)
 
         # Initialize the client
         cls.client = VLLMClient(base_url="http://localhost:8000", connection_timeout=240)
@@ -676,7 +678,7 @@ class TestVLLMClientServerBaseURL(TrlTestCase):
 @require_3_accelerators
 @require_vllm
 @pytest.mark.xdist_group("vllm_server")
-class TestVLLMClientServerTP(TrlTestCase):
+class TestVLLMClientServerTP(E3RMTestCase):
     model_id = "Qwen/Qwen2.5-1.5B"
 
     @classmethod
@@ -689,7 +691,7 @@ class TestVLLMClientServerTP(TrlTestCase):
 
         # Start the server process
         cls.server_process = subprocess.Popen(
-            ["vllm", "serve", cls.model_id, "--tensor-parallel-size", "2", *VLLM_SERVE_TRL_ARGS],
+            ["vllm", "serve", cls.model_id, "--tensor-parallel-size", "2", *VLLM_SERVE_E3_RM_ARGS],
             env=env,
         )
 
@@ -841,7 +843,7 @@ class TestVLLMClientServerTP(TrlTestCase):
 @require_torch_multi_accelerator
 @require_vllm
 @pytest.mark.xdist_group("vllm_server")
-class TestVLLMClientServerDeviceParameter(TrlTestCase):
+class TestVLLMClientServerDeviceParameter(E3RMTestCase):
     """Test the device parameter functionality in init_communicator."""
 
     model_id = "Qwen/Qwen2.5-1.5B"
@@ -855,7 +857,7 @@ class TestVLLMClientServerDeviceParameter(TrlTestCase):
         env["VLLM_SERVER_DEV_MODE"] = "1"
 
         # Start the server process
-        cls.server_process = subprocess.Popen(["vllm", "serve", cls.model_id, *VLLM_SERVE_TRL_ARGS], env=env)
+        cls.server_process = subprocess.Popen(["vllm", "serve", cls.model_id, *VLLM_SERVE_E3_RM_ARGS], env=env)
 
     def test_init_communicator_with_device_int(self):
         """Test init_communicator with integer device parameter."""
@@ -913,7 +915,7 @@ class TestVLLMClientServerDeviceParameter(TrlTestCase):
 @require_vllm
 @require_vision
 @pytest.mark.xdist_group("vllm_server")
-class TestVLLMClientServerVLM(TrlTestCase):
+class TestVLLMClientServerVLM(E3RMTestCase):
     model_id = "Qwen/Qwen2.5-VL-3B-Instruct"
 
     @classmethod
@@ -925,7 +927,7 @@ class TestVLLMClientServerVLM(TrlTestCase):
         env["VLLM_SERVER_DEV_MODE"] = "1"
 
         # Start the server process
-        cls.server_process = subprocess.Popen(["vllm", "serve", cls.model_id, *VLLM_SERVE_TRL_ARGS], env=env)
+        cls.server_process = subprocess.Popen(["vllm", "serve", cls.model_id, *VLLM_SERVE_E3_RM_ARGS], env=env)
 
         # Initialize the client (no communicator needed for generation-only tests)
         cls.client = VLLMClient(connection_timeout=240, host="localhost")

@@ -1,4 +1,6 @@
 # Copyright 2020-2026 The HuggingFace Team. All rights reserved.
+# Modified for E3-RM: namespace migration and maintenance comments (2026-10-28).
+# 验证迁移后公开行为；外部 tiny 模型与数据集 ID 保持真实来源。
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,9 +30,9 @@ from transformers import AutoConfig, AutoModelForCausalLM, AutoModelForImageText
 from transformers.testing_utils import torch_device
 from transformers.utils import is_peft_available
 
-import trl.trainer.utils as trainer_utils
-from trl import ModelConfig
-from trl.trainer.utils import (
+import e3_rm.trainer.utils as trainer_utils
+from e3_rm import ModelConfig
+from e3_rm.trainer.utils import (
     RepeatSampler,
     add_fused_lm_head,
     adjusted_mfu,
@@ -59,7 +61,7 @@ from trl.trainer.utils import (
     use_adapter,
 )
 
-from .testing_utils import TrlTestCase, require_peft, require_rich, require_torch_accelerator
+from .testing_utils import E3RMTestCase, require_peft, require_rich, require_torch_accelerator
 
 
 if is_peft_available():
@@ -76,7 +78,7 @@ if is_peft_available():
 
 
 @require_peft
-class TestUseAdapter(TrlTestCase):
+class TestUseAdapter(E3RMTestCase):
     def test_disables_on_none(self):
         model = AutoPeftModelForCausalLM.from_pretrained(
             "trl-internal-testing/tiny-PeftModel", adapter_name="my_adapter"
@@ -133,7 +135,7 @@ class TestUseAdapter(TrlTestCase):
         assert torch.equal(output_2, expected_2)
 
 
-class TestPad(TrlTestCase):
+class TestPad(E3RMTestCase):
     def test_pad_1_dim_left(self):
         x = torch.tensor([1, 2, 3])
         y = torch.tensor([4, 5])
@@ -217,7 +219,7 @@ class TestPad(TrlTestCase):
         assert torch.equal(output, expected)
 
 
-class TestHashModule(TrlTestCase):
+class TestHashModule(E3RMTestCase):
     def test_hash_module_deterministic_across_order(self):
         class ModAB(torch.nn.Module):
             def __init__(self, a: torch.Tensor, b: torch.Tensor):
@@ -267,7 +269,7 @@ class TestHashModule(TrlTestCase):
         assert h1 != h2
 
 
-class TestCreateModelFromPath(TrlTestCase):
+class TestCreateModelFromPath(E3RMTestCase):
     @pytest.mark.parametrize(("device_type", "expected_device_map"), [("cpu", None), ("mps", None), ("cuda", "auto")])
     def test_default_device_map(self, device_type, expected_device_map):
         with (
@@ -290,7 +292,7 @@ class TestCreateModelFromPath(TrlTestCase):
         assert mock_from_pretrained.call_args.kwargs["device_map"] == "auto"
 
 
-class TestModelAcceptsImages(TrlTestCase):
+class TestModelAcceptsImages(E3RMTestCase):
     @pytest.mark.parametrize(
         "model_id, architecture, expected",
         [
@@ -323,7 +325,7 @@ class TestModelAcceptsImages(TrlTestCase):
 
 
 @require_peft
-class TestGetPEFTConfig(TrlTestCase):
+class TestGetPEFTConfig(E3RMTestCase):
     def test_create_peft_config_use_peft_false(self):
         """Test that when use_peft is False, the function returns None."""
         model_args = ModelConfig(use_peft=False)
@@ -368,7 +370,7 @@ class TestGetPEFTConfig(TrlTestCase):
         assert any(name.endswith(".q_proj") for name in targeted)
 
 
-class TestGetCallableName(TrlTestCase):
+class TestGetCallableName(E3RMTestCase):
     def test_function(self):
         def accuracy_reward(completions):
             return [0.0] * len(completions)
@@ -398,7 +400,7 @@ class TestGetCallableName(TrlTestCase):
         assert get_callable_name(lambda completions: [0.0] * len(completions)) == "<lambda>"
 
 
-class TestIsAsyncCallable(TrlTestCase):
+class TestIsAsyncCallable(E3RMTestCase):
     def test_function(self):
         def reward(completions):
             return [0.0] * len(completions)
@@ -439,7 +441,7 @@ class TestIsAsyncCallable(TrlTestCase):
         assert is_async_callable(functools.partial(LengthReward(), threshold=0.5))
 
 
-class TestNanStd(TrlTestCase):
+class TestNanStd(E3RMTestCase):
     def test_nanstd_ignores_nans(self):
         x = torch.tensor([1.0, 2.0, 3.0, float("nan")])
         result = nanstd(x)
@@ -457,14 +459,14 @@ class TestNanStd(TrlTestCase):
         assert torch.isnan(result)
 
 
-class TestGenerateModelCard(TrlTestCase):
+class TestGenerateModelCard(E3RMTestCase):
     def test_full(self):
         model_card = generate_model_card(
             base_model="username/my_base_model",
             model_name="my_model",
             hub_model_id="username/my_hub_model",
             dataset_name="username/my_dataset",
-            tags=["trl", "trainer-tag"],
+            tags=["e3-rm", "trainer-tag"],
             wandb_url="https://wandb.ai/username/project_id/runs/abcd1234",
             trackio_url="https://huggingface.co/spaces/username/space_id",
             comet_url="https://www.comet.com/username/project_id/experiment_id",
@@ -506,7 +508,7 @@ class TestGenerateModelCard(TrlTestCase):
         assert "My Trainer" in card_text
 
 
-class TestFlushLeft(TrlTestCase):
+class TestFlushLeft(E3RMTestCase):
     def test_basic_case(self):
         mask = torch.tensor([[0, 0, 1, 1, 1], [0, 1, 1, 0, 0]])
         tensor1 = torch.tensor([[0, 0, 2, 3, 4], [0, 5, 6, 0, 0]])
@@ -550,7 +552,7 @@ class TestFlushLeft(TrlTestCase):
         assert torch.equal(new_mask, expected_mask)
 
 
-class TestRepeatRandomSampler(TrlTestCase):
+class TestRepeatRandomSampler(E3RMTestCase):
     def test_sampler(self):
         dataset = ["a", "b", "c", "d", "e", "f", "g"]
         sampler = RepeatSampler(dataset, mini_repeat_count=2)
@@ -662,7 +664,7 @@ class TestRepeatRandomSampler(TrlTestCase):
         assert sampled[24:28] == sampled[28:32] == sampled[32:36]
 
 
-class TestRepeatIterableDataset(TrlTestCase):
+class TestRepeatIterableDataset(E3RMTestCase):
     @staticmethod
     def _make_dataset(n):
         return IterableDataset.from_generator(lambda: ({"x": i} for i in range(n)))
@@ -738,7 +740,7 @@ class TestRepeatIterableDataset(TrlTestCase):
         assert epoch_0 != epoch_1  # different order
 
 
-class TestEntropyFromLogits(TrlTestCase):
+class TestEntropyFromLogits(E3RMTestCase):
     @pytest.mark.parametrize("shape", [(768,), (32, 768), (8, 16, 768), (2, 4, 8, 768)])
     @pytest.mark.parametrize("chunk_size", [1, 16])
     @pytest.mark.parametrize("dtype", [torch.float64, torch.float32, torch.float16, torch.bfloat16])
@@ -755,7 +757,7 @@ class TestEntropyFromLogits(TrlTestCase):
 
 
 @require_rich
-class TestPrintPromptCompletionsSample(TrlTestCase):
+class TestPrintPromptCompletionsSample(E3RMTestCase):
     @patch("sys.stdout", new_callable=StringIO)
     def test_print_tool_only_assistant_with_null_content(self, mock_stdout):
         completions = [
@@ -1066,7 +1068,7 @@ class TestPrintPromptCompletionsSample(TrlTestCase):
         assert output == expected_output
 
 
-class TestSelectiveLogSoftmax(TrlTestCase):
+class TestSelectiveLogSoftmax(E3RMTestCase):
     @pytest.mark.parametrize("dtype", [torch.float64, torch.float32, torch.float16, torch.bfloat16])
     def test_selective_log_softmax(self, dtype):
         """Test selective_log_softmax with logits of different dtypes"""
@@ -1094,7 +1096,7 @@ class TestSelectiveLogSoftmax(TrlTestCase):
         row_mask = torch.tensor([[1, 0, 1], [0, 1, 1]], device=device, dtype=torch.bool)
         if device != "cpu":  # the comparison below must be kernel against torch, not torch against torch
             assert trainer_utils._fused_logprob_entropy is not None
-            assert trainer_utils._supports_trl_loss_kernel(logits, index, row_mask)
+            assert trainer_utils._supports_e3_rm_loss_kernel(logits, index, row_mask)
 
         logprobs, entropy = selective_log_softmax_and_entropy(logits, index, temperature=0.7, row_mask=row_mask)
         (logprobs + 0.1 * entropy).sum().backward()
@@ -1134,7 +1136,7 @@ class TestSelectiveLogSoftmax(TrlTestCase):
             torch.testing.assert_close(actual_output, expected_output, rtol=1e-5, atol=1e-5)
 
 
-class TestShuffleSequenceDict(TrlTestCase):
+class TestShuffleSequenceDict(E3RMTestCase):
     def test_shuffle_preserves_shape(self):
         x = torch.arange(6).reshape(3, 2)
         y = torch.arange(3).reshape(3, 1)
@@ -1199,7 +1201,7 @@ class TestShuffleSequenceDict(TrlTestCase):
                 pytest.fail("Unexpected x row in shuffled output.")
 
 
-class TestSplitTensorDict(TrlTestCase):
+class TestSplitTensorDict(E3RMTestCase):
     def test_split_equal_chunks(self):
         x = torch.arange(12).reshape(6, 2)
         y = torch.arange(6).reshape(6, 1)
@@ -1239,7 +1241,7 @@ class TestSplitTensorDict(TrlTestCase):
             assert torch.equal(result[i]["y"], torch.tensor(1))
 
 
-class TestSplitPixelValuesByGrid(TrlTestCase):
+class TestSplitPixelValuesByGrid(E3RMTestCase):
     def test_split_correctly_0(self):
         batch = {
             "image_grid_thw": torch.tensor([[1, 2, 2], [1, 2, 2]]),
@@ -1366,7 +1368,7 @@ class TestSplitPixelValuesByGrid(TrlTestCase):
         assert result == batch
 
 
-class TestUnsplitPixelValuesByGrid(TrlTestCase):
+class TestUnsplitPixelValuesByGrid(E3RMTestCase):
     def test_unsplit_correctly(self):
         pixel_values = [torch.randn(4, 5), torch.randn(2, 5)]
         pixel_values_merged = torch.cat(pixel_values, dim=0)
@@ -1494,7 +1496,7 @@ _FUSED_LM_HEAD_MODEL_IDS = [
 
 @require_torch_accelerator
 class TestAddFusedLMHead:
-    # CPU tensors stand in for an accelerator without Triton (e.g. Trainium): TRL does not target CPU training
+    # CPU tensors stand in for an accelerator without Triton (e.g. Trainium): E3-RM does not target CPU training
     @pytest.mark.parametrize("device", [torch_device, "cpu"])
     def test_masked_labels(self, device):
         """Positions labelled `-100` are zero and the others match an unmasked run."""
@@ -1512,7 +1514,7 @@ class TestAddFusedLMHead:
         assert (out["log_probs"][~mask] == 0).all()
         assert (out["entropy"][~mask] == 0).all()
 
-    # CPU tensors stand in for an accelerator without Triton (e.g. Trainium): TRL does not target CPU training
+    # CPU tensors stand in for an accelerator without Triton (e.g. Trainium): E3-RM does not target CPU training
     @pytest.mark.parametrize("device", [torch_device, "cpu"])
     def test_support_ids_masked_labels(self, device):
         """With `support_ids`, valid positions are normalized over their support, and masked ones stay zero."""
@@ -1561,7 +1563,7 @@ class TestAddFusedLMHead:
         torch.testing.assert_close(out_shifted["entropy"][:, :-1], out["entropy"])
         assert (out_shifted["log_probs"][:, -1] == 0).all()
 
-    # CPU tensors stand in for an accelerator without Triton (e.g. Trainium): TRL does not target CPU training
+    # CPU tensors stand in for an accelerator without Triton (e.g. Trainium): E3-RM does not target CPU training
     @pytest.mark.parametrize("device", [torch_device, "cpu"])
     def test_all_masked_labels_backward(self, device):
         model = AutoModelForCausalLM.from_pretrained("trl-internal-testing/tiny-Qwen3ForCausalLM").to(device)
@@ -2141,7 +2143,7 @@ class TestAddFusedLMHeadLoss:
         assert out.label_mask.sum().item() == unpadded + B
 
 
-class TestComputeFlopsPerToken(TrlTestCase):
+class TestComputeFlopsPerToken(E3RMTestCase):
     DENSE_MODEL_ID = "trl-internal-testing/tiny-Qwen3ForCausalLM"
     MOE_MODEL_ID = "trl-internal-testing/tiny-Qwen3MoeForCausalLM"
 
@@ -2243,7 +2245,7 @@ class TestGetPeakFlops:
         assert get_peak_flops(device_name, dtype) is None
 
 
-class TestComputeMfu(TrlTestCase):
+class TestComputeMfu(E3RMTestCase):
     def test_perfect_utilization(self):
         # If aggregate TPS is exactly `peak * world_size / flops_per_token`, MFU is 100%.
         flops = 100e9
@@ -2253,7 +2255,7 @@ class TestComputeMfu(TrlTestCase):
         assert compute_mfu(flops, tps, world_size, peak_flops_per_device=peak) == pytest.approx(100.0)
 
 
-class TestAdjustedMfu(TrlTestCase):
+class TestAdjustedMfu(E3RMTestCase):
     MOE_MODEL_ID = "trl-internal-testing/tiny-Qwen3MoeForCausalLM"
 
     def test_consistent_with_formula(self):

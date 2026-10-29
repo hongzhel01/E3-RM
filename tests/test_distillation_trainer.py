@@ -1,4 +1,6 @@
 # Copyright 2020-2026 The HuggingFace Team. All rights reserved.
+# Modified for E3-RM: namespace migration and maintenance comments (2026-10-28).
+# 验证迁移后公开行为；外部 tiny 模型与数据集 ID 保持真实来源。
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,12 +27,11 @@ from transformers import AutoModelForCausalLM, BitsAndBytesConfig
 from transformers.testing_utils import torch_device
 from transformers.utils import is_peft_available
 
-from trl import DistillationConfig, DistillationTrainer
-from trl.experimental.gkd.gkd_trainer import GKDTrainer
-from trl.trainer.distillation_trainer import _chunked_divergence_loss
+from e3_rm import DistillationConfig, DistillationTrainer
+from e3_rm.trainer.distillation_trainer import _chunked_divergence_loss
 
 from .testing_utils import (
-    TrlTestCase,
+    E3RMTestCase,
     require_bitsandbytes,
     require_peft,
     require_response_parsing,
@@ -114,14 +115,14 @@ def _reference_chunked_divergence(
 
 
 @require_torch_accelerator
-class TestChunkedDivergenceLoss(TrlTestCase):
+class TestChunkedDivergenceLoss(E3RMTestCase):
     """Unit tests for the memory-efficient chunked JSD loss (`_chunked_divergence_loss`)."""
 
     @pytest.fixture(autouse=True, params=[(4, 5)])
     def small_chunks(self, request):
         with (
-            patch("trl.kernels.chunked_divergence.TOKEN_CHUNK_SIZE", request.param[0]),
-            patch("trl.kernels.chunked_divergence.VOCAB_CHUNK_SIZE", request.param[1]),
+            patch("e3_rm.kernels.chunked_divergence.TOKEN_CHUNK_SIZE", request.param[0]),
+            patch("e3_rm.kernels.chunked_divergence.VOCAB_CHUNK_SIZE", request.param[1]),
         ):
             yield
 
@@ -135,7 +136,7 @@ class TestChunkedDivergenceLoss(TrlTestCase):
         completion_mask.reshape(-1)[torch.randperm(B * K, generator=g, device=device)[:n_masked]] = 0
         return student_hidden, teacher_hidden, student_w, teacher_w, completion_mask
 
-    # CPU tensors stand in for an accelerator without Triton (e.g. Trainium): TRL does not target CPU training
+    # CPU tensors stand in for an accelerator without Triton (e.g. Trainium): E3-RM does not target CPU training
     @pytest.mark.parametrize("device", [torch_device, "cpu"])
     @pytest.mark.parametrize("beta", [0.0, 0.5, 1.0])
     def test_matches_naive_full_vocab(self, beta, device):
@@ -223,8 +224,8 @@ class TestChunkedDivergenceLoss(TrlTestCase):
         torch.testing.assert_close(loss, expected)
 
     @pytest.mark.parametrize("beta", [0.0, 0.5, 1.0])
-    def test_parity_with_gkd(self, beta):
-        # Identity lm_head so hidden states are the logits, then compare against GKD's full-vocab JSD (sum reduction).
+    def test_matches_full_vocabulary_jsd_sum(self, beta):
+        # 使用单位评分矩阵，将分块实现与独立的全词表数学定义比较（sum 归约）。
         B, K, V = 2, 5, 11
         g = torch.Generator(torch_device).manual_seed(1)
         student_logits = torch.randn(B, K, V, generator=g, device=torch_device)
@@ -232,14 +233,13 @@ class TestChunkedDivergenceLoss(TrlTestCase):
         eye = torch.eye(V, device=torch_device)
         mask = torch.ones(B, K, device=torch_device)
         mask[0, -1] = 0
-        labels = torch.where(mask.bool(), torch.ones_like(mask, dtype=torch.long), torch.full_like(mask, -100).long())
         loss, _, _ = _chunked_divergence_loss(
             student_logits, teacher_logits, eye, eye, mask, beta, num_items_in_batch=1
         )
-        gkd = GKDTrainer.generalized_jsd_loss(
-            student_logits, teacher_logits, labels=labels, beta=beta, reduction="sum"
+        expected = _reference_chunked_divergence(
+            student_logits, teacher_logits, eye, eye, mask, beta, num_items_in_batch=1
         )
-        torch.testing.assert_close(loss, gkd)
+        torch.testing.assert_close(loss, expected)
 
     def test_masked_positions_ignored(self):
         sh, th, sw, tw, mask = self._inputs()
@@ -371,7 +371,7 @@ class TestChunkedDivergenceLoss(TrlTestCase):
         assert torch.count_nonzero(s_bias.grad) == 0
 
 
-class TestDistillationTrainer(TrlTestCase):
+class TestDistillationTrainer(E3RMTestCase):
     def test_init_minimal(self):
         # Instantiate with only model, teacher_model and train_dataset.
         dataset = load_dataset("trl-internal-testing/zen", "standard_prompt_only", split="train")
@@ -1480,7 +1480,7 @@ class TestDistillationTrainer(TrlTestCase):
 
 
 @require_vision
-class TestDistillationTrainerVLM(TrlTestCase):
+class TestDistillationTrainerVLM(E3RMTestCase):
     @pytest.mark.parametrize(
         "model_id",
         [

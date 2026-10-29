@@ -1,4 +1,6 @@
 # Copyright 2020-2026 The HuggingFace Team. All rights reserved.
+# Modified for E3-RM: namespace migration and maintenance comments (2026-10-28).
+# 验证迁移后公开行为；外部 tiny 模型与数据集 ID 保持真实来源。
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,10 +31,10 @@ from transformers import (
 from transformers.testing_utils import torch_device
 from transformers.utils import is_peft_available
 
-from trl import RLOOConfig, RLOOTrainer
+from e3_rm import RLOOConfig, RLOOTrainer
 
 from .testing_utils import (
-    TrlTestCase,
+    E3RMTestCase,
     is_ampere_or_newer,
     require_bitsandbytes,
     require_peft,
@@ -47,7 +49,7 @@ if is_peft_available():
     from peft import LoraConfig, get_peft_model
 
 
-class TestRLOOTrainer(TrlTestCase):
+class TestRLOOTrainer(E3RMTestCase):
     def test_init_minimal(self):
         # Test that RLOOTrainer can be instantiated with only model, reward_model and train_dataset
         dataset = load_dataset("trl-internal-testing/zen", "standard_prompt_only", split="train")
@@ -1780,7 +1782,7 @@ class TestRLOOTrainer(TrlTestCase):
             train_dataset=dataset,
         )
 
-        with caplog.at_level("WARNING", logger="trl.trainer.rloo_trainer"):
+        with caplog.at_level("WARNING", logger="e3_rm.trainer.rloo_trainer"):
             trainer.train()
 
         expected_warning = "All reward functions returned None for the following kwargs:"
@@ -2207,7 +2209,7 @@ class TestRLOOTrainer(TrlTestCase):
 
 
 @require_vision
-class TestRLOOTrainerVLM(TrlTestCase):
+class TestRLOOTrainerVLM(E3RMTestCase):
     @pytest.mark.parametrize(
         "model_id",
         [

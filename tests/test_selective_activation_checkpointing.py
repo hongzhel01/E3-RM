@@ -1,4 +1,6 @@
 # Copyright 2020-2026 The HuggingFace Team. All rights reserved.
+# Modified for E3-RM: namespace migration and maintenance comments (2026-10-28).
+# 验证迁移后公开行为；外部 tiny 模型与数据集 ID 保持真实来源。
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,13 +21,13 @@ from torch.utils.checkpoint import CheckpointPolicy
 from transformers import AutoModelForCausalLM
 from transformers.testing_utils import torch_device
 
-from trl.models.selective_activation_checkpointing import (
+from e3_rm.models.selective_activation_checkpointing import (
     _aten_attention_ops,
     _build_policy_fn,
     enable_selective_activation_checkpointing,
 )
 
-from .testing_utils import TrlTestCase, require_torch_accelerator
+from .testing_utils import E3RMTestCase, require_torch_accelerator
 
 
 class _SDPACounter(TorchDispatchMode):
@@ -44,7 +46,7 @@ class _SDPACounter(TorchDispatchMode):
         return func(*args, **(kwargs or {}))
 
 
-class TestSelectiveActivationCheckpointingPolicy(TrlTestCase):
+class TestSelectiveActivationCheckpointingPolicy(E3RMTestCase):
     """Exercises the SAC policy directly, against real and fake ops, so it needs no accelerator or model."""
 
     def test_saves_aten_sdpa_ops(self):
@@ -66,7 +68,7 @@ class TestSelectiveActivationCheckpointingPolicy(TrlTestCase):
 
 
 @require_torch_accelerator
-class TestSelectiveActivationCheckpointing(TrlTestCase):
+class TestSelectiveActivationCheckpointing(E3RMTestCase):
     model_id = "trl-internal-testing/tiny-Qwen2ForCausalLM-2.5"
 
     def _forward_backward(self, selective):

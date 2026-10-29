@@ -1,4 +1,6 @@
 # Copyright 2020-2026 The HuggingFace Team. All rights reserved.
+# Modified for E3-RM: namespace migration and maintenance comments (2026-10-28).
+# 验证迁移后公开行为；外部 tiny 模型与数据集 ID 保持真实来源。
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -49,8 +51,8 @@ SEED = 42
 MAX_LENGTH = 512
 
 
-def _trl_commit() -> str:
-    """Return the current trl commit SHA (with `-dirty` suffix if the working tree has uncommitted changes).
+def _e3_rm_commit() -> str:
+    """Return the current e3_rm commit SHA (with `-dirty` suffix if the working tree has uncommitted changes).
 
     Assumes the suite is run from a `pip install -e .` checkout — the only intended setup.
     """
@@ -69,7 +71,7 @@ def env_snapshot() -> dict:
         "accelerate": accelerate.__version__,
         "torch": torch.__version__,
         "transformers": transformers.__version__,
-        "trl": _trl_commit(),
+        "e3_rm": _e3_rm_commit(),
         "python": platform.python_version(),
         "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu",
     }
@@ -104,9 +106,9 @@ class CorrectnessConfig:
 
 
 def run(config: CorrectnessConfig) -> Trajectory:
-    """Invoke the trl CLI as a subprocess; parse its trainer_state.json into a Trajectory."""
+    """Invoke the e3_rm CLI as a subprocess; parse its trainer_state.json into a Trajectory."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        cmd = ["trl", config.method]
+        cmd = ["e3-rm", config.method]
         cmd += ["--num_processes", str(config.num_processes)]
         cmd += ["--output_dir", tmpdir, *config.cli_args()]
         env = {**os.environ, "CUDA_VISIBLE_DEVICES": ",".join(str(i) for i in range(config.num_processes))}
@@ -298,7 +300,7 @@ if __name__ == "__main__":
     )
     cli_args = parser.parse_args()
 
-    if _trl_commit().endswith("-dirty") and not cli_args.allow_dirty:
+    if _e3_rm_commit().endswith("-dirty") and not cli_args.allow_dirty:
         sys.exit(
             "Refusing to record from a dirty working tree: the snapshot would pin a state that can't be "
             "reproduced from a commit SHA. Commit your changes first, or pass --allow-dirty to override."

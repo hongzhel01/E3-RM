@@ -1,4 +1,6 @@
 # Copyright 2020-2026 The HuggingFace Team. All rights reserved.
+# Modified for E3-RM: namespace migration and maintenance comments (2026-10-28).
+# 验证迁移后公开行为；外部 tiny 模型与数据集 ID 保持真实来源。
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,15 +24,15 @@ import pytest
 import torch
 from transformers.utils import is_peft_available, is_torch_xpu_available
 
-# Apply TRL's compatibility patches before test modules import transformers' Trainer, which imports peft (#7871)
-import trl  # noqa: F401
+# Apply E3-RM's compatibility patches before test modules import transformers' Trainer, which imports peft (#7871)
+import e3_rm  # noqa: F401
 
 
 # ============================================================================
 # Silence transformers "LOAD REPORT" tables
 # ============================================================================
 # transformers >= 5 prints a "LOAD REPORT" table whenever a checkpoint has missing/mismatched/unexpected keys
-# (transformers/utils/loading_report.py). TRL's tiny test models don't serialize the tied `lm_head.weight`, so
+# (transformers/utils/loading_report.py). E3-RM's tiny test models don't serialize the tied `lm_head.weight`, so
 # this fires on nearly every model load and floods the test output. It is emitted through `logging` at WARNING
 # level from three loggers; we drop only these records, keeping all other warnings visible.
 class _DropLoadReport(logging.Filter):
@@ -186,9 +188,9 @@ def apply_model_revisions(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def force_use_cpu_without_accelerator(monkeypatch):
-    """Force `use_cpu=True` on all TRL configs when no accelerator is available.
+    """Force `use_cpu=True` on all E3-RM configs when no accelerator is available.
 
-    TRL configs default `bf16` to `True` (see `_BaseConfig.__post_init__`), which makes
+    E3-RM configs default `bf16` to `True` (see `_BaseConfig.__post_init__`), which makes
     `transformers.TrainingArguments.__post_init__` raise `ValueError: Your setup doesn't support bf16/gpu. You need to
     assign use_cpu ...` on machines without a GPU. Setting `use_cpu=True` before that validation runs lets the whole
     suite run on CPU without editing every individual config in the tests. On a machine with an accelerator (CUDA, XPU,
@@ -199,7 +201,7 @@ def force_use_cpu_without_accelerator(monkeypatch):
     if torch_device is not None and torch_device != "cpu":
         return
 
-    from trl.trainer.base_config import _BaseConfig
+    from e3_rm.trainer.base_config import _BaseConfig
 
     original_post_init = _BaseConfig.__post_init__
 
@@ -217,7 +219,7 @@ def restore_mixed_precision_env(monkeypatch):
 
     On transformers < 5, `TrainingArguments.__post_init__` writes the mixed precision to `ACCELERATE_MIXED_PRECISION`
     and reads that same variable back as the default for the next instantiation, where a `bf16=False` flag is
-    indistinguishable from an unset one. TRL configs default `bf16` to `True`, so the first trainer built in a worker
+    indistinguishable from an unset one. E3-RM configs default `bf16` to `True`, so the first trainer built in a worker
     sets the variable to `bf16` for the whole process, and no config built later can clear it. transformers < 5 also
     builds the `Accelerator` without passing the mixed precision, so accelerate falls back to the leaked variable and a
     test that asks for `bf16=False` silently runs in bf16: with `test_chunked_logps_match_full_logits`, the streamed
@@ -261,7 +263,7 @@ def cleanup_vllm_dist_env():
     `torch.distributed.destroy_process_group()` so that vLLM's internal parallel-state globals (`_TP`, `_WORLD`, ...)
     are reset too, letting the next colocate test reinitialize cleanly.
 
-    It also restores `RANK`, `LOCAL_RANK`, `WORLD_SIZE`, `MASTER_ADDR` and `MASTER_PORT`, which TRL sets before
+    It also restores `RANK`, `LOCAL_RANK`, `WORLD_SIZE`, `MASTER_ADDR` and `MASTER_PORT`, which E3-RM sets before
     building the vLLM `LLM` in colocate mode. Left set, they make the next test's `Accelerator` initialize
     `torch.distributed` on the leaked port.
     """
