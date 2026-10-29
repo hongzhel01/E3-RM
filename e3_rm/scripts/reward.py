@@ -24,6 +24,16 @@
 # ///
 
 import argparse
+from dataclasses import dataclass, field
+
+from e3_rm.scripts import ScriptArguments
+
+
+@dataclass
+class RewardScriptArguments(ScriptArguments):
+    """Reward script options; `e3=True` selects progressive semantic robustness."""
+
+    e3: bool = field(default=False, metadata={"help": "Use E3RewardTrainer with verified semantic relations."})
 
 
 def main(script_args, training_args, model_args, dataset_args):
@@ -62,8 +72,14 @@ def main(script_args, training_args, model_args, dataset_args):
     else:
         raise ValueError("Either `datasets` or `dataset_name` must be provided.")
 
-    # Initialize the reward trainer
-    trainer = RewardTrainer(
+    # Keep the standard reward baseline unless E3 is explicitly requested.
+    trainer_class = RewardTrainer
+    if script_args.e3:
+        from e3_rm import E3RewardTrainer
+
+        # --e3 true（或 YAML 的 e3: true）选择包含三项附加损失和三阶段课程的完整训练路径。
+        trainer_class = E3RewardTrainer
+    trainer = trainer_class(
         model=model_args.model_name_or_path,
         args=training_args,
         train_dataset=dataset[script_args.dataset_train_split],
@@ -92,9 +108,9 @@ def main(script_args, training_args, model_args, dataset_args):
 
 
 def make_parser(subparsers: argparse._SubParsersAction | None = None, prog: str | None = None):
-    from e3_rm import DatasetMixtureConfig, E3RMParser, ModelConfig, RewardConfig, ScriptArguments
+    from e3_rm import DatasetMixtureConfig, E3RewardConfig, E3RMParser, ModelConfig
 
-    dataclass_types = (ScriptArguments, RewardConfig, ModelConfig, DatasetMixtureConfig)
+    dataclass_types = (RewardScriptArguments, E3RewardConfig, ModelConfig, DatasetMixtureConfig)
     if subparsers is not None:
         parser = subparsers.add_parser(
             "reward", help="Run the reward training script", dataclass_types=dataclass_types

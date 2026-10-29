@@ -1,0 +1,33 @@
+# Split source examples BEFORE creating verified variants; see README section 4.1.
+model_name_or_path: Qwen/Qwen2.5-0.5B-Instruct
+output_dir: outputs/e3-reward-model
+e3: true
+
+datasets:
+  - path: json
+    data_files: data/train_e3.jsonl
+    split: train
+
+use_cpu: true
+bf16: false
+fp16: false
+per_device_train_batch_size: 1
+gradient_accumulation_steps: 4
+learning_rate: 0.00001
+num_train_epochs: 3
+max_length: 512
+seed: 42
+logging_steps: 1
+eval_strategy: "no"
+save_strategy: epoch
+save_total_limit: 2
+report_to: none
+push_to_hub: false
+
+e3_invariance_coefficient: 1.0
+e3_margin_coefficient: 1.0
+e3_semantic_coefficient: 1.0
+e3_semantic_margin: 1.0
+e3_stage2_start_ratio: 0.2
+e3_stage3_start_ratio: 0.6
+e3_ramp_ratio: 0.1

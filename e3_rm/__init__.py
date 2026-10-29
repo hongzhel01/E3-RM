@@ -28,6 +28,7 @@ except PackageNotFoundError:
     __version__ = "unknown"
 
 _import_structure = {
+    "e3": ["E3RewardConfig", "E3RewardTrainer"],
     "chat_template_utils": [
         "add_response_schema",
         "clone_chat_template",
@@ -95,6 +96,7 @@ if TYPE_CHECKING:
         prepare_multimodal_messages,
         unpair_preference_dataset,
     )
+    from .e3 import E3RewardConfig, E3RewardTrainer
     from .models import create_reference_model
     from .scripts import DatasetMixtureConfig, E3RMParser, ScriptArguments, get_dataset, init_zero_verbose
     from .trainer import (

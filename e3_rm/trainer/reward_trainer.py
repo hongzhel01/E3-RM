@@ -209,7 +209,7 @@ class DataCollatorForPreference(DataCollatorMixin):
         if "margin" in examples[0]:
             margins = torch.tensor([example["margin"] for example in examples], dtype=torch.float)
         # 前半批次是 chosen，后半批次是同顺序的 rejected；后续损失依赖这一配对布局。
-        # 若以后加入 E3 变体，应显式记录索引，不能继续把所有奖励直接均分。
+        # 此 collator 只处理原始偏好对；E3 变体通过 e3/data.py 的专用 collator 显式记录索引。
         input_ids = chosen_ids + rejected_ids
         attention_mask = [torch.ones_like(ids) for ids in input_ids]
 
